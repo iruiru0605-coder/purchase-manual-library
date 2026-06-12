@@ -1,65 +1,75 @@
-# Setup
+# セットアップ手順
 
-## 1. Create the Spreadsheet
+このページは、初めて使う人向けの準備手順です。最初だけ少し設定が必要ですが、一度作れば普段はスプレッドシートのメニューから使えます。
 
-Create a new Google Spreadsheet and add these tabs:
+## 1. スプレッドシートを作る
 
-- `商品一覧`
-- `まとめ登録`
-- `設定`
-- `使い方`
-
-The spreadsheet schema is documented in [sheet-schema.md](sheet-schema.md).
-
-## 2. Add Apps Script
-
-Open the spreadsheet and go to:
+Googleスプレッドシートを新規作成し、次の4つのタブを作ります。
 
 ```text
-Extensions > Apps Script
+商品一覧
+まとめ登録
+設定
+使い方
 ```
 
-Paste `src/Code.gs` into the default script file.
+各タブの列名は [sheet-schema.md](sheet-schema.md) にまとめています。
 
-If you want to define scopes explicitly, open the Apps Script project settings, enable manifest editing, and paste `src/appsscript.json` into the manifest.
+## 2. Apps Scriptを貼り付ける
 
-## 3. Initial Drive Setup
+スプレッドシートを開いた状態で、上部メニューから次を選びます。
 
-Run this function once from the Apps Script editor:
+```text
+拡張機能 > Apps Script
+```
+
+開いた画面の初期ファイルに、[src/Code.gs](../src/Code.gs) の中身を貼り付けます。
+
+権限の範囲を明示したい場合は、Apps Scriptのプロジェクト設定でマニフェスト編集を有効にし、[src/appsscript.json](../src/appsscript.json) の内容を貼り付けます。
+
+## 3. 初期フォルダを作る
+
+Apps Scriptエディタで、次の関数を1回だけ実行します。
 
 ```text
 setupManualLibrary
 ```
 
-The first run will ask for permissions. After approval, it creates:
+初回実行時はGoogleの権限承認が出ます。承認すると、Googleドライブに次のフォルダが作られます。
 
 ```text
 購入品マニュアル/
 └── _未整理/
 ```
 
-The root folder URL and inbox URL are written into the `設定` tab.
+作成されたフォルダURLは `設定` タブにも自動で書き込まれます。
 
-## 4. Create Warranty Notification Trigger
+## 4. 保証期限通知を有効にする
 
-Run this function once:
+保証期限が近い商品をメールで受け取りたい場合は、次の関数を1回実行します。
 
 ```text
 createWeeklyWarrantyTrigger
 ```
 
-It creates a weekly Monday morning trigger for warranty-expiration checks.
+これで、毎週月曜の朝に保証期限チェックが走ります。毎日通知にすると同じ商品が何度も届きやすいため、週1回を標準にしています。
 
-## 5. Reload the Spreadsheet
+## 5. スプレッドシートを再読み込みする
 
-Reload the spreadsheet. A custom menu named `マニュアル管理` appears.
+スプレッドシートを再読み込みすると、上部メニューに次が表示されます。
 
-## Notification Email
+```text
+マニュアル管理
+```
 
-By default, `NOTIFY_EMAIL` in `src/Code.gs` is empty:
+表示されたら準備完了です。
+
+## 通知先メールアドレス
+
+[src/Code.gs](../src/Code.gs) では、初期状態の通知先が空欄です。
 
 ```javascript
 const NOTIFY_EMAIL = '';
 ```
 
-When empty, the script uses `Session.getActiveUser().getEmail()`. If that does not work in your Google Workspace environment, set `NOTIFY_EMAIL` explicitly.
+空欄のままなら、実行しているGoogleアカウントのメールアドレスを使います。Google Workspaceの設定によって取得できない場合は、ここに通知先メールアドレスを直接入れてください。

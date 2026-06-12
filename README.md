@@ -1,22 +1,142 @@
-# Purchase Manual Library
+# 購入品マニュアル管理データベース
 
-Google Sheets and Apps Script workflow for managing product manuals, warranty documents, receipts, and physical paper-manual storage.
+![購入品マニュアル管理データベース](assets/main_visual.svg)
 
-This project is designed for households and small teams that want the spreadsheet to be the searchable source of truth, while Google Drive acts as the file warehouse.
+## 概要
 
-## What It Does
+このツールは、家電やガジェット、家具などを買ったあとに増えていく **取扱説明書、保証書、レシート、紙マニュアルの保管場所** を、GoogleスプレッドシートとGoogleドライブでまとめて管理するための仕組みです。
 
-- Creates stable product IDs such as `P0001`, `P0002`, without formula-based numbering.
-- Creates one Google Drive folder per product.
-- Supports a `_未整理` inbox folder for quick receipt and warranty uploads.
-- Tracks manufacturer warranty and extended warranty.
-- Sends weekly warranty-expiration email alerts.
-- Supports batch registration for purchases accumulated from Amazon, Rakuten, stores, and other sources.
-- Tracks paper-manual storage locations such as `キッチン家電（KI）の001`.
-- Allows manual override of generated paper-storage labels.
-- Handles products whose official PDF manuals cannot be found.
+探すときはスプレッドシートから入り、必要なPDFや写真はGoogleドライブのフォルダへ移動します。紙マニュアルを箱で保管している場合も、`キッチン家電（KI）の001` のような置き場を自動で作り、あとから自由に修正できます。
 
-## Repository Contents
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+## どんな時に使う？
+
+* 家電の保証書やレシート写真がGoogleドライブ内で散らばっている
+* Amazonや楽天で買ったものを、週末にまとめて登録したい
+* 公式マニュアルPDFが見つからない海外製品も管理したい
+* 紙マニュアルを箱やファイルで保管していて、どこに入れたか忘れやすい
+* 保証期限が近い商品をメールで知らせてほしい
+
+## 仕組み
+
+![運用の流れ](assets/workflow.svg)
+
+このツールでは、スプレッドシートを「正」として使います。
+
+* **Googleスプレッドシート**: 商品名、型番、保証期限、紙ファイル置き場などを検索する場所
+* **Googleドライブ**: PDF、保証書写真、レシート写真を保管する倉庫
+* **Apps Script**: 商品ID、Driveフォルダ、紙ファイル置き場、通知を自動化する部分
+
+## 主な機能
+
+* **商品IDを自動採番**  
+  `P0001`、`P0002` のような固定IDを作ります。行を並べ替えてもIDはずれません。
+
+* **商品ごとのDriveフォルダを自動作成**  
+  例: `P0001_2026-06-12_Panasonic_食洗機`
+
+* **未整理Inbox運用**  
+  買った日はGoogleドライブの `_未整理` に保証書やレシートを放り込むだけでOKです。
+
+* **まとめ登録**  
+  Amazonや楽天などで買った商品が数件たまったら、`まとめ登録` タブに入力して一括登録できます。
+
+* **保証期限の自動計算とメール通知**  
+  メーカー保証と延長保証の長い方を使って保証期限を出し、期限が近いものをメールで通知します。
+
+* **紙マニュアル置き場の自動採番**  
+  カテゴリから `キッチン家電（KI）の001` のような置き場を作ります。あとから手で修正できます。
+
+* **公式マニュアルがない商品も管理**  
+  `公式なし`、`後でスキャン`、`紙あり` などの状態を残せます。
+
+## 使い方
+
+### 1. スプレッドシートを作る
+
+Googleスプレッドシートを新規作成し、次のタブを作ります。
+
+```text
+商品一覧
+まとめ登録
+設定
+使い方
+```
+
+列の作り方は [docs/sheet-schema.md](docs/sheet-schema.md) にまとめています。
+
+### 2. Apps Scriptを貼り付ける
+
+スプレッドシートで次を開きます。
+
+```text
+拡張機能 > Apps Script
+```
+
+そこに [src/Code.gs](src/Code.gs) の中身を貼り付けます。
+
+### 3. 初期セットアップを実行する
+
+Apps Script画面で `setupManualLibrary` を1回実行します。
+
+これでGoogleドライブに次のフォルダが作成されます。
+
+```text
+購入品マニュアル/
+└── _未整理/
+```
+
+### 4. 商品をまとめて登録する
+
+Amazonや楽天で買った商品がたまったら、`まとめ登録` タブに入力します。
+
+最低限必要なのは次の3つです。
+
+```text
+購入日
+メーカー
+商品名
+```
+
+入力後、スプレッドシートのメニューから実行します。
+
+```text
+マニュアル管理 > まとめ登録を取り込む
+```
+
+すると `商品一覧` に正式登録され、商品ID、Driveフォルダ、紙ファイル置き場が作られます。
+
+## 紙マニュアルの管理例
+
+カテゴリが `キッチン家電` の場合、紙ファイル置き場は次のように自動入力されます。
+
+```text
+キッチン家電（KI）の001
+キッチン家電（KI）の002
+```
+
+この値は普通のテキストなので、実際の保管箱に合わせてあとから変更できます。
+
+```text
+キッチン用品 ボックスA-5
+```
+
+カテゴリごとのコードは `設定` タブで変更できます。
+
+## 公式マニュアルが見つからない場合
+
+海外製品などで公式PDFが見つからない場合は、`マニュアル状態` に次のような状態を残します。
+
+```text
+公式なし
+紙あり
+後でスキャン
+```
+
+紙マニュアルを後でスキャンする場合は、`スキャン状態` を `未スキャン` にしておくと、あとで見つけやすくなります。
+
+## ファイル構成
 
 ```text
 .
@@ -29,43 +149,17 @@ This project is designed for households and small teams that want the spreadshee
 │   └── operations.md
 ├── examples/
 │   └── batch-import-template.csv
+├── assets/
+│   ├── main_visual.svg
+│   └── workflow.svg
 ├── LICENSE
 └── README.md
 ```
 
-## Quick Start
+## 開発者向けメモ
 
-1. Create a Google Spreadsheet.
-2. Create tabs named `商品一覧`, `まとめ登録`, `設定`, and `使い方`.
-3. Build the columns described in [docs/sheet-schema.md](docs/sheet-schema.md).
-4. Open `Extensions > Apps Script`.
-5. Paste [src/Code.gs](src/Code.gs) into the script editor.
-6. Optional: paste [src/appsscript.json](src/appsscript.json) as the manifest.
-7. Run `setupManualLibrary` once to create the Drive root folder and `_未整理`.
-8. Reload the spreadsheet and use the `マニュアル管理` menu.
+このリポジトリはGoogle Apps Script単体で動くように作っています。外部サーバーやAPIキーは不要です。
 
-See [docs/setup.md](docs/setup.md) for the full setup flow.
+## ライセンス
 
-## Typical Workflow
-
-### Quick Capture
-
-When you buy something, upload receipt or warranty photos to the Drive `_未整理` folder. You do not have to complete spreadsheet registration immediately.
-
-### Batch Registration
-
-When several purchases have accumulated, paste them into the `まとめ登録` tab and run:
-
-```text
-マニュアル管理 > まとめ登録を取り込む
-```
-
-The script moves each entry into `商品一覧`, assigns a product ID, creates a Drive folder, and generates a paper-manual storage label when a category is available.
-
-### Manual Not Found
-
-If an official PDF manual is unavailable, set `マニュアル状態` to `公式なし` or `後でスキャン`. If you keep a physical paper manual, leave `スキャン状態` as `未スキャン` until you scan it.
-
-## License
-
-MIT
+[MIT License](LICENSE)

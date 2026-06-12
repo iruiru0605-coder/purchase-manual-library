@@ -1,74 +1,78 @@
-# Operations
+# 運用手順
 
-## Register One Product
+このページは、日常的な使い方のメモです。細かい設定よりも「どの順番で何をするか」を確認したいときに使います。
 
-Fill a row in `商品一覧` with at least:
+## 1件だけ登録する
+
+`商品一覧` に新しい行を作り、最低限次の3つを入力します。
 
 - `購入日`
 - `メーカー`
 - `商品名`
 
-Then select the row and run:
+入力した行を選択して、上部メニューから実行します。
 
 ```text
 マニュアル管理 > この行を登録（ID採番＋フォルダ作成）
 ```
 
-The script writes:
+実行すると、スクリプトが次の項目を書き込みます。
 
 - `商品ID`
 - `フォルダリンク`
-- `紙ファイル置き場` when `カテゴリ` is present
-- warranty formulas for the row
+- `紙ファイル置き場`。カテゴリが入っている場合
+- その行の保証期限・保証状態の数式
 
-## Batch Import
+## まとめて登録する
 
-Paste accumulated purchases into `まとめ登録`.
+Amazonや楽天などで買った商品が数件たまったら、`まとめ登録` タブに貼り付けます。
 
-Required fields:
+必須項目は次の3つです。
 
 - `購入日`
 - `メーカー`
 - `商品名`
 
-Then run:
+入力後、上部メニューから実行します。
 
 ```text
 マニュアル管理 > まとめ登録を取り込む
 ```
 
-Rows with `登録済` or `スキップ` in `取込状態` are ignored.
+`取込状態` が `登録済` または `スキップ` の行は取り込みません。取り込んだ行には `生成ID` と `フォルダリンク` が自動で入ります。
 
-## Paper Manual Storage
+## 紙マニュアルを箱で管理する
 
-When category is `キッチン家電` and code is `KI`, generated paper-storage labels look like:
+カテゴリが `キッチン家電`、紙分類コードが `KI` の場合、紙ファイル置き場は次のように作られます。
 
 ```text
 キッチン家電（KI）の001
 キッチン家電（KI）の002
 ```
 
-The value is plain text after generation. You can edit it to match the real physical box, for example:
+作成後は普通のテキストなので、実際の箱やファイル名に合わせて変更できます。
 
 ```text
 キッチン用品 ボックスA-5
 ```
 
-## Official Manual Unavailable
+## 公式マニュアルが見つからない商品
 
-For products whose official manual cannot be found:
+海外製品などで公式マニュアルPDFが見つからない場合は、次のように残しておきます。
 
-- Set `マニュアル状態` to `公式なし` or `後でスキャン`.
-- Use `紙ファイル置き場` for the physical manual.
-- Keep `スキャン状態` as `未スキャン` until scanned.
-- After scanning, upload the file into the product Drive folder and set `スキャン状態` to `スキャン済`.
+- `マニュアル状態` を `公式なし` または `後でスキャン` にする
+- 紙がある場合は `紙ファイル置き場` を使って保管先を残す
+- まだスキャンしていなければ `スキャン状態` を `未スキャン` にする
+- スキャン後は商品フォルダへアップロードし、`スキャン状態` を `スキャン済` にする
 
-## Warranty Alerts
+## 保証期限の通知
 
-`checkWarrantyExpiry` sends an email when warranty deadlines are within `NOTIFY_DAYS`.
+`checkWarrantyExpiry` は、保証期限が `NOTIFY_DAYS` 日以内の商品をメールで通知します。
 
-The weekly trigger is created by:
+週次トリガーは次の関数で作成します。
 
 ```text
 createWeeklyWarrantyTrigger
 ```
+
+標準では月曜朝にチェックします。同じ商品が何度も通知されるのを避けるため、毎日ではなく週1回を想定しています。
