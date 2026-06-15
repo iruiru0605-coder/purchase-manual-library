@@ -1,4 +1,5 @@
 import express from 'express';
+import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import multer from 'multer';
 import path from 'node:path';
@@ -312,7 +313,15 @@ app.get('/api/products/:productId/manuals/:manualId/file', async (req, res, next
       const resolved = path.resolve(manual.archive.path);
       const archiveRoot = path.resolve(ARCHIVE_DIR);
       if (!resolved.startsWith(`${archiveRoot}${path.sep}`)) throw new Error('PDFの保存先が不正です。');
-      res.sendFile(resolved);
+      try {
+        await sendLocalPdf(res, resolved);
+      } catch (error) {
+        if (manual.url) {
+          res.redirect(manual.url);
+          return;
+        }
+        throw error;
+      }
       return;
     }
     const remoteUrl = manual.archive?.webViewLink || manual.url;
@@ -384,4 +393,26 @@ async function cleanupLocalManualFiles(product) {
     if (manual.archive?.storage !== 'local' || !manual.archive.path) return;
     await fs.unlink(manual.archive.path).catch(() => {});
   }));
+}
+
+async function sendLocalPdf(res, filePath) {
+  let stat;
+  try {
+    stat = await fs.stat(filePath);
+  } catch {
+    throw new Error('保存済みPDFファイルが見つかりません。元URLがある場合はPDFを入れ替えてください。');
+  }
+  if (!stat.isFile()) throw new Error('保存済みPDFファイルが見つかりません。');
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Length', String(stat.size));
+  res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(path.basename(filePath))}`);
+  const stream = createReadStream(filePath);
+  stream.on('error', error => {
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    res.destroy(error);
+  });
+  stream.pipe(res);
 }
