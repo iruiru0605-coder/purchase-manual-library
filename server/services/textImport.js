@@ -14,6 +14,7 @@ const NOISE_PATTERNS = [
 const PRODUCT_HINTS = [
   '家電', '炊飯器', 'レンジ', '冷蔵庫', '洗濯機', '掃除機', '食洗機', '食器洗い', '空気清浄機',
   'モニター', 'ディスプレイ', 'プリンタ', 'ルーター', '充電器', 'charger', 'バッテリー',
+  'カメラ', 'ベビーモニター', '見守り', 'ペットカメラ',
   '家具', '椅子', 'チェア', '机', 'デスク', '棚', 'ラック', '工具', 'ドリル',
   '子ども', 'ベビー', 'チャイルド', '健康', '体温計', '血圧', '車', 'カー',
   'ソフトウェア', 'ライセンス', 'Anker', 'Panasonic', 'Sony', 'Makita', 'Apple'
@@ -35,14 +36,39 @@ export function parsePurchaseText(text, { source = 'Amazon' } = {}) {
   let currentOrderId = '';
   let currentPrice = '';
   let currentUrl = '';
+  let pendingLabel = '';
 
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
+    if (isDateLabel(line)) {
+      pendingLabel = 'date';
+      continue;
+    }
+    if (isOrderLabel(line)) {
+      pendingLabel = 'orderId';
+      continue;
+    }
+
     const date = extractDate(line);
     if (date) {
       currentDate = date;
+      currentOrderId = '';
       currentPrice = '';
       currentUrl = '';
+      if (pendingLabel === 'date' || isPureDateLine(line)) {
+        pendingLabel = '';
+        continue;
+      }
+    }
+
+    if (pendingLabel === 'orderId') {
+      const looseOrderId = extractLooseOrderId(line);
+      if (looseOrderId) {
+        currentOrderId = looseOrderId;
+        pendingLabel = '';
+        continue;
+      }
+      pendingLabel = '';
     }
 
     const orderId = extractOrderId(line);
@@ -100,7 +126,8 @@ function findNearbyPrice(lines, index) {
 
 function looksLikeProductLine(line) {
   const text = line.trim();
-  if (text.length < 5 || text.length > 180) return false;
+  if (text.length < 5 || text.length > 320) return false;
+  if (isPureDateLine(text) || isDateLabel(text) || isOrderLabel(text)) return false;
   if (NOISE_PATTERNS.some(pattern => pattern.test(text))) return false;
   if (/^https?:\/\//.test(text)) return false;
   if (/^[\d\s,./年月日:-]+$/.test(text)) return false;
@@ -116,8 +143,21 @@ function cleanProductTitle(line) {
     .replace(/^・|^[-*]\s*/, '')
     .replace(/^(商品名|品名|商品|タイトル)\s*[:：]\s*/, '')
     .replace(/^(商品番号|品番)\s*[:：]\s*/, '')
+    .replace(/^★[^★]{0,80}★\s*/, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function isDateLabel(line) {
+  return /^(注文日|購入日|購入日時)\s*[:：]?$/.test(line.trim());
+}
+
+function isOrderLabel(line) {
+  return /^(注文番号|注文ID|オーダー番号|受注番号|Order\s*(?:Number|#|ID)?)\s*[:：]?\s*$/i.test(line.trim());
+}
+
+function isPureDateLine(line) {
+  return /^\d{4}[\/年.-]\s*\d{1,2}[\/月.-]\s*\d{1,2}(?:日)?(?:\([月火水木金土日]\))?$/.test(line.trim());
 }
 
 function extractDate(line) {
@@ -132,6 +172,11 @@ function extractDate(line) {
 function extractOrderId(line) {
   const match = line.match(/(?:注文番号|注文ID|オーダー番号|受注番号|Order\s*(?:Number|#|ID)?)[\s:：#-]*([A-Z0-9-]{6,})/i);
   return match?.[1] || '';
+}
+
+function extractLooseOrderId(line) {
+  const text = line.trim();
+  return /^[A-Z0-9][A-Z0-9-]{5,}$/i.test(text) ? text : '';
 }
 
 function extractPrice(line) {
