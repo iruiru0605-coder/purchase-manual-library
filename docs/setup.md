@@ -35,8 +35,10 @@ Model Name
 DeepSeekの例:
 
 ```text
-https://api.deepseek.com/v1
-deepseek-chat
+Provider名: DeepSeek
+API Base URL: https://api.deepseek.com
+Model Name: deepseek-v4-flash
+API Key: DeepSeek Platformで発行したAPIキー
 ```
 
 ## Google Drive設定

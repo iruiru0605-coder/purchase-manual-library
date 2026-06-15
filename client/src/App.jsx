@@ -15,11 +15,13 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Save,
   Smartphone,
+  Trash2,
   Upload,
   X
 } from 'lucide-react';
-import { apiGet, apiImportText, apiPost, apiUploadCsv } from './api.js';
+import { apiDelete, apiGet, apiImportText, apiPatch, apiPost, apiUploadCsv, apiUploadManual } from './api.js';
 
 const TABS = [
   { id: 'inbox', label: '購入履歴Inbox', icon: Upload },
@@ -141,7 +143,13 @@ export default function App() {
           />
         )}
         {activeTab === 'library' && (
-          <LibraryView products={state?.products || []} query={query} setQuery={setQuery} />
+          <LibraryView
+            products={state?.products || []}
+            categories={state?.settings?.categories || []}
+            query={query}
+            setQuery={setQuery}
+            onRun={run}
+          />
         )}
         {activeTab === 'settings' && (
           <SettingsView state={state} onRun={run} />
@@ -273,6 +281,13 @@ function CandidateDetail({ candidate, onRun, busy }) {
     });
   }
 
+  function deleteCandidate() {
+    return onRun('取り込み候補を削除しています...', async () => {
+      await apiDelete(`/api/candidates/${candidate.id}`);
+      return { message: '取り込み候補を削除しました。' };
+    });
+  }
+
   function enrich() {
     return onRun('AIで商品情報を補完しています...', async () => {
       await apiPost(`/api/candidates/${candidate.id}/enrich`);
@@ -323,6 +338,7 @@ function CandidateDetail({ candidate, onRun, busy }) {
         <button onClick={() => setStatus('accepted')} disabled={Boolean(busy) || isRegistered}><Check size={16} />登録する</button>
         <button onClick={() => setStatus('later')} disabled={Boolean(busy) || isRegistered}>後で確認</button>
         <button onClick={() => setStatus('rejected')} disabled={Boolean(busy) || isRegistered}><X size={16} />不要</button>
+        {!isRegistered && <button onClick={deleteCandidate} disabled={Boolean(busy)}><Trash2 size={16} />削除</button>}
       </div>
 
       <div className="section-block">
@@ -380,10 +396,12 @@ function CandidateDetail({ candidate, onRun, busy }) {
   );
 }
 
-function LibraryView({ products, query, setQuery }) {
+function LibraryView({ products, categories, query, setQuery, onRun }) {
+  const [categoryFilter, setCategoryFilter] = useState('');
   const filtered = products.filter(product => {
     const text = `${product.maker} ${product.name} ${product.model} ${product.category} ${product.paperStorage}`.toLowerCase();
-    return text.includes(query.toLowerCase());
+    const categoryOk = !categoryFilter || product.category === categoryFilter;
+    return categoryOk && text.includes(query.toLowerCase());
   });
 
   return (
@@ -391,25 +409,14 @@ function LibraryView({ products, query, setQuery }) {
       <div className="searchbar">
         <Search size={18} />
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder="商品名、型番、カテゴリ、紙の保管先で検索" />
+        <select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)} aria-label="カテゴリで絞り込み">
+          <option value="">すべてのカテゴリ</option>
+          {categories.map(category => <option key={category.name} value={category.name}>{category.name}</option>)}
+        </select>
       </div>
       <div className="product-list">
         {filtered.map(product => (
-          <article className="product-card" key={product.id}>
-            <div className="product-main">
-              <span className="product-id">{product.productId}</span>
-              <h2>{product.maker} {product.name}</h2>
-              <p>{product.model || '型番未設定'} / {product.category}</p>
-              <div className="paper-storage">{product.paperStorage}</div>
-            </div>
-            <div className="manual-chip-list">
-              {(product.manuals || []).map(manual => (
-                <a key={manual.id} href={manual.archive?.webViewLink || manual.url} target="_blank" rel="noreferrer" className={manual.archiveStatus === 'saved' ? 'manual-chip' : 'manual-chip failed'}>
-                  {manual.type}
-                </a>
-              ))}
-              {(product.manuals || []).length === 0 && <span className="muted">PDF未保存</span>}
-            </div>
-          </article>
+          <ProductCard key={product.id} product={product} categories={categories} onRun={onRun} />
         ))}
         {filtered.length === 0 && (
           <div className="panel empty-library">
@@ -419,6 +426,115 @@ function LibraryView({ products, query, setQuery }) {
         )}
       </div>
     </div>
+  );
+}
+
+function ProductCard({ product, categories, onRun }) {
+  const [draft, setDraft] = useState(product);
+  const [manualFile, setManualFile] = useState(null);
+  const [manualTitle, setManualTitle] = useState('');
+  const [manualType, setManualType] = useState('取扱説明書');
+
+  useEffect(() => {
+    setDraft(product);
+  }, [product]);
+
+  function setField(key, value) {
+    setDraft(current => ({ ...current, [key]: value }));
+  }
+
+  function saveProduct() {
+    return onRun('商品情報を保存しています...', async () => {
+      await apiPatch(`/api/products/${product.id}`, draft);
+      return { message: '商品情報を保存しました。' };
+    });
+  }
+
+  function deleteProduct() {
+    return onRun('商品を削除しています...', async () => {
+      await apiDelete(`/api/products/${product.id}`);
+      return { message: '商品を削除しました。' };
+    });
+  }
+
+  function uploadManual() {
+    return onRun('PDFをアップロードしています...', async () => {
+      if (!manualFile) throw new Error('PDFファイルを選択してください。');
+      await apiUploadManual(product.id, manualFile, { title: manualTitle, type: manualType });
+      setManualFile(null);
+      setManualTitle('');
+      return { message: 'PDFを追加しました。' };
+    });
+  }
+
+  function deleteManual(manualId) {
+    return onRun('PDF情報を削除しています...', async () => {
+      await apiDelete(`/api/products/${product.id}/manuals/${manualId}`);
+      return { message: 'PDF情報を削除しました。' };
+    });
+  }
+
+  return (
+    <article className="product-card editable-product">
+      <div className="product-main">
+        <span className="product-id">{product.productId}</span>
+        <div className="product-edit-grid">
+          <Field label="メーカー" value={draft.maker} onChange={value => setField('maker', value)} />
+          <Field label="商品名" value={draft.name} onChange={value => setField('name', value)} />
+          <Field label="型番・品番" value={draft.model} onChange={value => setField('model', value)} />
+          <label className="field">
+            <span>カテゴリ</span>
+            <select value={draft.category || ''} onChange={event => setField('category', event.target.value)}>
+              <option value="">未設定</option>
+              {categories.map(category => <option key={category.name} value={category.name}>{category.name}</option>)}
+            </select>
+          </label>
+          <Field label="購入日" value={draft.purchaseDate} onChange={value => setField('purchaseDate', value)} />
+          <Field label="メーカー保証(月)" value={draft.warrantyMonths || ''} onChange={value => setField('warrantyMonths', value)} />
+          <Field label="延長保証(月)" value={draft.extendedWarrantyMonths || ''} onChange={value => setField('extendedWarrantyMonths', value)} />
+          <Field label="紙マニュアル保管先" value={draft.paperStorage} onChange={value => setField('paperStorage', value)} />
+        </div>
+        <div className="warranty-line">
+          保証期限: <strong>{product.warrantyExpiresAt || '未設定'}</strong>
+        </div>
+        <label className="field product-note-field">
+          <span>メモ</span>
+          <textarea value={draft.notes || ''} onChange={event => setField('notes', event.target.value)} />
+        </label>
+        <div className="action-row">
+          <button className="primary" onClick={saveProduct}><Save size={16} />保存</button>
+          <button onClick={deleteProduct}><Trash2 size={16} />商品を削除</button>
+        </div>
+      </div>
+      <div className="manual-manager">
+        <div className="manual-upload">
+          <strong>PDF追加・入れ替え</strong>
+          <span>公式PDFがない場合は、スキャンPDFをここから追加します。入れ替えは旧PDFを削除してから追加します。</span>
+          <select value={manualType} onChange={event => setManualType(event.target.value)}>
+            <option>取扱説明書</option>
+            <option>設置説明書</option>
+            <option>クイックガイド</option>
+            <option>保証関連</option>
+            <option>その他</option>
+          </select>
+          <input value={manualTitle} onChange={event => setManualTitle(event.target.value)} placeholder="PDF表示名" />
+          <label className="file-picker">
+            <input type="file" accept="application/pdf,.pdf" onChange={event => setManualFile(event.target.files?.[0] || null)} />
+            {manualFile ? manualFile.name : 'PDFを選択'}
+          </label>
+          <button onClick={uploadManual}><Upload size={16} />PDFを追加</button>
+        </div>
+        <div className="manual-chip-list">
+          {(product.manuals || []).map(manual => (
+            <div key={manual.id} className={manual.archiveStatus === 'saved' ? 'manual-chip-row' : 'manual-chip-row failed'}>
+              <a href={manualHref(product, manual)} target="_blank" rel="noreferrer">{manual.type}: {manual.title}</a>
+              <button className="small-icon-button" onClick={() => deleteManual(manual.id)} title="PDF情報を削除"><Trash2 size={14} /></button>
+            </div>
+          ))}
+          {(product.manuals || []).length === 0 && <span className="muted">PDF未保存。手元のPDFを追加できます。</span>}
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -455,12 +571,27 @@ function SettingsView({ state, onRun }) {
     });
   }
 
+  function applyDeepSeekDefaults() {
+    setSettings(current => ({
+      ...current,
+      llm: {
+        ...current.llm,
+        providerName: 'DeepSeek',
+        apiBaseUrl: 'https://api.deepseek.com',
+        model: 'deepseek-v4-flash'
+      }
+    }));
+  }
+
   return (
     <div className="settings-layout">
       <section className="panel settings-panel">
         <div className="panel-head">
           <h2><Bot size={18} />LLM設定</h2>
           <span>DeepSeekなどOpenAI互換APIを指定できます。</span>
+        </div>
+        <div className="action-row">
+          <button onClick={applyDeepSeekDefaults}><Bot size={16} />DeepSeek v4 推奨値を入力</button>
         </div>
         <Field label="Provider名" value={settings.llm.providerName} onChange={value => update('llm.providerName', value)} />
         <Field label="API Base URL" value={settings.llm.apiBaseUrl} onChange={value => update('llm.apiBaseUrl', value)} />
@@ -484,6 +615,12 @@ function SettingsView({ state, onRun }) {
       </section>
     </div>
   );
+}
+
+function manualHref(product, manual) {
+  if (manual.archive?.webViewLink) return manual.archive.webViewLink;
+  if (manual.archive?.storage === 'local') return `/api/products/${product.id}/manuals/${manual.id}/file`;
+  return manual.url || `/api/products/${product.id}/manuals/${manual.id}/file`;
 }
 
 function Field({ label, value, onChange, type = 'text' }) {

@@ -103,10 +103,12 @@ DeepSeekを使う例:
 
 ```text
 Provider名: DeepSeek
-API Base URL: https://api.deepseek.com/v1
-Model Name: deepseek-chat
+API Base URL: https://api.deepseek.com
+Model Name: deepseek-v4-flash
 API Key: 自分のAPIキー
 ```
+
+`deepseek-chat` / `deepseek-reasoner` はDeepSeek公式ドキュメント上で2026-07-24に非推奨化予定です。DeepSeek 4系を使う場合は `deepseek-v4-flash` を推奨します。
 
 APIキーは `.manual-library/settings.json` に保存され、Gitには入りません。
 

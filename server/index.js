@@ -1,31 +1,35 @@
 import express from 'express';
+import fs from 'node:fs/promises';
 import multer from 'multer';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PORT } from './config.js';
+import { ARCHIVE_DIR, PORT } from './config.js';
 import { parsePurchaseCsv } from './services/csvImport.js';
 import { parsePurchaseText } from './services/textImport.js';
 import { enrichCandidateWithLlm } from './services/llm.js';
 import { searchManualCandidates } from './services/manualSearch.js';
-import { getDriveStatus, handleGoogleOAuthCallback, makeGoogleAuthUrl } from './services/googleDrive.js';
-import { registerCandidate } from './services/products.js';
+import { getDriveStatus, handleGoogleOAuthCallback, makeGoogleAuthUrl, uploadPdfToDrive } from './services/googleDrive.js';
+import { registerCandidate, removeProduct, updateProductFields } from './services/products.js';
 import {
   ensureDataDir,
+  makeManualId,
+  saveLocalPdf,
   mutateDb,
   readDb,
   readSettings,
+  writeDb,
   writeSettings
 } from './lib/storage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 90 * 1024 * 1024 } });
 
 await ensureDataDir();
 
 const app = express();
-app.use(express.json({ limit: '3mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 app.get('/api/health', async (_req, res) => {
   res.json({ ok: true, now: new Date().toISOString() });
@@ -105,6 +109,20 @@ app.post('/api/candidates/:id/status', async (req, res, next) => {
       return candidate;
     });
     res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete('/api/candidates/:id', async (req, res, next) => {
+  try {
+    const removed = await mutateDb(db => {
+      const index = db.candidates.findIndex(candidate => candidate.id === req.params.id);
+      if (index < 0) throw new Error('登録候補が見つかりません。');
+      const [candidate] = db.candidates.splice(index, 1);
+      return candidate;
+    });
+    res.json({ ok: true, removed });
   } catch (error) {
     next(error);
   }
@@ -200,6 +218,114 @@ app.post('/api/candidates/:id/register', async (req, res, next) => {
   }
 });
 
+app.patch('/api/products/:id', async (req, res, next) => {
+  try {
+    const product = await mutateDb(db => updateProductFields(db, req.params.id, req.body));
+    res.json(product);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete('/api/products/:id', async (req, res, next) => {
+  try {
+    const product = await mutateDb(db => removeProduct(db, req.params.id));
+    await cleanupLocalManualFiles(product);
+    res.json({ ok: true, removed: product });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/products/:id/manuals/upload', upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) throw new Error('PDFファイルを選択してください。');
+    if (!/pdf/i.test(req.file.mimetype) && !/\.pdf$/i.test(req.file.originalname || '')) {
+      throw new Error('PDFファイルのみアップロードできます。');
+    }
+
+    const db = await readDb();
+    const product = db.products.find(item => item.id === req.params.id || item.productId === req.params.id);
+    if (!product) throw new Error('商品が見つかりません。');
+
+    const manual = {
+      id: makeManualId(),
+      title: req.body.title || req.file.originalname.replace(/\.pdf$/i, ''),
+      url: '',
+      type: req.body.type || '取扱説明書',
+      sourceHost: 'uploaded',
+      sourceType: 'user-uploaded',
+      discoveryMethod: 'manual-upload',
+      score: 100,
+      selected: true,
+      status: 'uploaded',
+      checkedAt: new Date().toISOString()
+    };
+
+    const driveStatus = await getDriveStatus();
+    const archive = driveStatus.configured && driveStatus.authenticated
+      ? await uploadPdfToDrive({ product, manual, buffer: req.file.buffer })
+      : await saveLocalPdf(product, manual, req.file.buffer);
+
+    product.manuals = product.manuals || [];
+    product.manuals.unshift({
+      ...manual,
+      archiveStatus: 'saved',
+      archive,
+      savedAt: new Date().toISOString()
+    });
+    product.updatedAt = new Date().toISOString();
+    await writeDb(db);
+    res.json(product);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete('/api/products/:productId/manuals/:manualId', async (req, res, next) => {
+  try {
+    const db = await readDb();
+    const product = db.products.find(item => item.id === req.params.productId || item.productId === req.params.productId);
+    if (!product) throw new Error('商品が見つかりません。');
+    const index = (product.manuals || []).findIndex(manual => manual.id === req.params.manualId);
+    if (index < 0) throw new Error('PDFが見つかりません。');
+    const [removed] = product.manuals.splice(index, 1);
+    if (removed.archive?.storage === 'local' && removed.archive.path) {
+      await fs.unlink(removed.archive.path).catch(() => {});
+    }
+    product.updatedAt = new Date().toISOString();
+    await writeDb(db);
+    res.json({ ok: true, removed });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/products/:productId/manuals/:manualId/file', async (req, res, next) => {
+  try {
+    const db = await readDb();
+    const product = db.products.find(item => item.id === req.params.productId || item.productId === req.params.productId);
+    if (!product) throw new Error('商品が見つかりません。');
+    const manual = (product.manuals || []).find(item => item.id === req.params.manualId);
+    if (!manual) throw new Error('PDFが見つかりません。');
+    if (manual.archive?.storage === 'local' && manual.archive.path) {
+      const resolved = path.resolve(manual.archive.path);
+      const archiveRoot = path.resolve(ARCHIVE_DIR);
+      if (!resolved.startsWith(`${archiveRoot}${path.sep}`)) throw new Error('PDFの保存先が不正です。');
+      res.sendFile(resolved);
+      return;
+    }
+    const remoteUrl = manual.archive?.webViewLink || manual.url;
+    if (remoteUrl) {
+      res.redirect(remoteUrl);
+      return;
+    }
+    throw new Error('開けるPDFリンクがありません。');
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get('/api/google/status', async (_req, res, next) => {
   try {
     res.json(await getDriveStatus());
@@ -250,4 +376,12 @@ function findCandidate(db, id) {
   const candidate = db.candidates.find(item => item.id === id);
   if (!candidate) throw new Error('登録候補が見つかりません。');
   return candidate;
+}
+
+async function cleanupLocalManualFiles(product) {
+  const manuals = product?.manuals || [];
+  await Promise.all(manuals.map(async manual => {
+    if (manual.archive?.storage !== 'local' || !manual.archive.path) return;
+    await fs.unlink(manual.archive.path).catch(() => {});
+  }));
 }

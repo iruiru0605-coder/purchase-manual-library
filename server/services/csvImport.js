@@ -9,7 +9,10 @@ const FIELD_ALIASES = {
   sourceUrl: ['商品URL', '商品リンク', 'URL', 'リンク', 'Product URL', 'Item URL'],
   orderId: ['注文番号', '注文ID', 'Order ID', 'Order Number'],
   seller: ['販売元', 'ショップ', '店舗', 'Seller', 'Store'],
-  memo: ['メモ', '備考', 'Memo', 'Note']
+  memo: ['メモ', '備考', 'Memo', 'Note'],
+  warrantyMonths: ['メーカー保証(月)', 'メーカー保証', '保証(月)', '保証期間(月)', 'Warranty Months'],
+  extendedWarrantyMonths: ['延長保証(月)', '延長保証', 'Extended Warranty Months'],
+  paperStorage: ['紙ファイル置き場', '紙マニュアル置き場', '紙保管先', 'Paper Storage']
 };
 
 const REGISTER_HINTS = [
@@ -83,6 +86,9 @@ export function makeCandidateFromRow(row, index, context) {
     orderId: pick(row, FIELD_ALIASES.orderId),
     seller: pick(row, FIELD_ALIASES.seller),
     memo: pick(row, FIELD_ALIASES.memo),
+    warrantyMonths: normalizeInteger(pick(row, FIELD_ALIASES.warrantyMonths)),
+    extendedWarrantyMonths: normalizeInteger(pick(row, FIELD_ALIASES.extendedWarrantyMonths)),
+    paperStorage: pick(row, FIELD_ALIASES.paperStorage),
     raw: row,
     registrationScore: score,
     reason: score >= 60 ? '説明書管理の対象になりそうです' : '必要なら登録してください',
@@ -115,6 +121,11 @@ function normalizeKey(value) {
 
 function normalizePrice(value) {
   const text = String(value || '').replace(/[^\d.-]/g, '');
+  return text ? Number(text) : null;
+}
+
+function normalizeInteger(value) {
+  const text = String(value || '').replace(/[^\d]/g, '');
   return text ? Number(text) : null;
 }
 

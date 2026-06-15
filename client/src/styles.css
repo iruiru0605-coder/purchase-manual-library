@@ -563,7 +563,7 @@ td small,
 
 .searchbar {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
+  grid-template-columns: 24px minmax(0, 1fr) 220px;
   align-items: center;
   gap: 8px;
   background: #ffffff;
@@ -576,6 +576,10 @@ td small,
   border: 0;
   min-height: 32px;
   padding: 0;
+}
+
+.searchbar select {
+  min-height: 34px;
 }
 
 .product-list {
@@ -591,6 +595,105 @@ td small,
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 0.4fr);
   gap: 12px;
+}
+
+.editable-product {
+  align-items: start;
+}
+
+.product-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.product-edit-grid .field,
+.product-note-field {
+  padding: 0;
+}
+
+.product-note-field {
+  margin-top: 10px;
+}
+
+.field textarea {
+  width: 100%;
+  min-height: 78px;
+  resize: vertical;
+  border: 1px solid #cfdadd;
+  border-radius: 8px;
+  padding: 9px 10px;
+}
+
+.warranty-line {
+  margin-top: 10px;
+  color: #5d737a;
+  font-size: 13px;
+}
+
+.warranty-line strong {
+  color: #17343b;
+}
+
+.manual-manager {
+  display: grid;
+  gap: 12px;
+}
+
+.manual-upload {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #e1eaec;
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.manual-upload strong,
+.manual-upload span {
+  display: block;
+}
+
+.manual-upload span {
+  color: #6e8289;
+  font-size: 12px;
+}
+
+.manual-chip-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 36px;
+  padding: 5px 6px 5px 10px;
+  border-radius: 8px;
+  background: #e9f5f2;
+}
+
+.manual-chip-row a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: none;
+  color: #176b62;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.manual-chip-row.failed {
+  background: #f6e8e6;
+}
+
+.manual-chip-row.failed a {
+  color: #8c332d;
+}
+
+.small-icon-button {
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
 }
 
 .product-id {
@@ -734,6 +837,11 @@ td small,
   }
 
   .metadata-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .searchbar,
+  .product-edit-grid {
     grid-template-columns: 1fr;
   }
 

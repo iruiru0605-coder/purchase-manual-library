@@ -3,7 +3,7 @@ import { estimateRegistrationScore, makeCandidateFromRow } from './csvImport.js'
 
 const NOISE_PATTERNS = [
   /注文履歴|購入履歴|アカウント|ログイン|検索|メニュー|ヘルプ|カート|レジ/i,
-  /注文日|注文番号|注文ID|オーダー|order\s*(number|#|id)?/i,
+  /購入日時|購入日|注文日|注文番号|注文ID|オーダー|order\s*(number|#|id)?/i,
   /合計|小計|送料|ポイント|クーポン|支払い|お届け先|配送|配達|発送|出荷/i,
   /返品|交換|レビュー|領収書|請求書|再購入|もう一度購入|商品を表示/i,
   /前へ|次へ|表示|絞り込み|すべて|キャンセル|閉じる/i,
@@ -20,7 +20,7 @@ const PRODUCT_HINTS = [
 ];
 
 export function parsePurchaseText(text, { source = 'Amazon' } = {}) {
-  const normalized = String(text || '').replace(/\r/g, '\n');
+  const normalized = String(text || '').replace(/\r/g, '\n').replace(/\t/g, '\n');
   if (!normalized.trim()) throw new Error('購入履歴ページからコピーしたテキストを貼り付けてください。');
 
   const lines = normalized
@@ -114,6 +114,8 @@ function looksLikeProductLine(line) {
 function cleanProductTitle(line) {
   return line
     .replace(/^・|^[-*]\s*/, '')
+    .replace(/^(商品名|品名|商品|タイトル)\s*[:：]\s*/, '')
+    .replace(/^(商品番号|品番)\s*[:：]\s*/, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -128,7 +130,7 @@ function extractDate(line) {
 }
 
 function extractOrderId(line) {
-  const match = line.match(/(?:注文番号|注文ID|オーダー番号|Order\s*(?:Number|#|ID)?)[\s:：#-]*([A-Z0-9-]{6,})/i);
+  const match = line.match(/(?:注文番号|注文ID|オーダー番号|受注番号|Order\s*(?:Number|#|ID)?)[\s:：#-]*([A-Z0-9-]{6,})/i);
   return match?.[1] || '';
 }
 
