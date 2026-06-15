@@ -1,69 +1,64 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
-  <title id="title">購入品マニュアル管理データベース</title>
-  <desc id="desc">スプレッドシートを中心に、Googleドライブ、保証通知、紙マニュアル置き場を管理する図解。</desc>
+  <title id="title">取説ライブラリ</title>
+  <desc id="desc">購入履歴CSVからAIが商品情報と取扱説明書PDF候補を探し、Google Driveへ保存してスマホで閲覧する流れ。</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#eef7f3"/>
-      <stop offset="1" stop-color="#f8f4ea"/>
+      <stop offset="0" stop-color="#edf6f5"/>
+      <stop offset="1" stop-color="#f7f4ec"/>
     </linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#25424a" flood-opacity="0.16"/>
+    <filter id="shadow" x="-12%" y="-12%" width="124%" height="132%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#18333a" flood-opacity="0.15"/>
     </filter>
     <style>
-      .title { font: 700 48px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17343b; }
-      .lead { font: 500 24px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #31505a; }
-      .label { font: 700 26px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17343b; }
-      .small { font: 500 18px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #48616a; }
-      .tiny { font: 600 15px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #60737a; }
-      .card { fill: #ffffff; stroke: #d7e2df; stroke-width: 2; rx: 18; filter: url(#shadow); }
-      .line { stroke: #5c8f8a; stroke-width: 5; stroke-linecap: round; fill: none; }
-      .accent { fill: #2f8078; }
-      .warm { fill: #d99548; }
-      .red { fill: #c96b5d; }
+      .title { font: 800 56px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #15323a; }
+      .lead { font: 600 25px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #355963; }
+      .label { font: 800 25px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17343b; }
+      .body { font: 600 18px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #526c74; }
+      .tiny { font: 700 15px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #627980; }
+      .card { fill: #fff; stroke: #d7e3e4; stroke-width: 2; filter: url(#shadow); }
+      .teal { fill: #27827b; }
+      .gold { fill: #d79843; }
+      .red { fill: #ca695b; }
+      .line { stroke: #5b958d; stroke-width: 5; stroke-linecap: round; fill: none; }
     </style>
   </defs>
-
   <rect width="1200" height="630" fill="url(#bg)"/>
+  <text x="72" y="92" class="title">取説ライブラリ</text>
+  <text x="75" y="136" class="lead">購入履歴から、取扱説明書PDFと紙マニュアルの場所を自動で整理するローカルWebアプリ</text>
 
-  <text x="70" y="92" class="title">購入品マニュアル管理データベース</text>
-  <text x="72" y="136" class="lead">取扱説明書・保証書・レシート・紙マニュアルの置き場を、1つの表から探せるようにするツール</text>
+  <rect x="82" y="218" width="250" height="210" rx="18" class="card"/>
+  <circle cx="126" cy="268" r="26" class="teal"/>
+  <path d="M112 268h28M126 254v28" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+  <text x="166" y="276" class="label">購入履歴CSV</text>
+  <text x="112" y="330" class="body">Amazon / 楽天 / メルカリ</text>
+  <text x="112" y="362" class="body">登録候補を自動作成</text>
 
-  <rect x="80" y="210" width="310" height="230" rx="18" class="card"/>
-  <circle cx="132" cy="266" r="28" class="accent"/>
-  <path d="M119 267h26M132 254v26" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
-  <text x="174" y="270" class="label">買ったもの</text>
-  <text x="110" y="326" class="small">保証書写真</text>
-  <text x="110" y="360" class="small">レシート</text>
-  <text x="110" y="394" class="small">紙マニュアル</text>
+  <rect x="475" y="188" width="250" height="270" rx="18" class="card"/>
+  <circle cx="520" cy="244" r="26" class="gold"/>
+  <text x="555" y="252" class="label">AI補完</text>
+  <text x="506" y="310" class="body">メーカー</text>
+  <text x="506" y="342" class="body">型番</text>
+  <text x="506" y="374" class="body">カテゴリ</text>
+  <text x="506" y="406" class="body">公式PDF候補</text>
 
-  <rect x="445" y="188" width="310" height="278" rx="18" class="card"/>
-  <rect x="490" y="238" width="220" height="138" rx="10" fill="#e7f1ef" stroke="#8fbab4" stroke-width="2"/>
-  <path d="M490 278h220M490 318h220M544 238v138M600 238v138M656 238v138" stroke="#8fbab4" stroke-width="2"/>
-  <text x="505" y="418" class="label">スプレッドシート</text>
-  <text x="505" y="448" class="small">ここから検索する</text>
+  <rect x="868" y="218" width="250" height="210" rx="18" class="card"/>
+  <circle cx="912" cy="268" r="26" class="red"/>
+  <path d="M902 260h20v28h-20z" fill="#fff"/>
+  <path d="M906 267h12M906 274h12M906 281h9" stroke="#ca695b" stroke-width="2"/>
+  <text x="950" y="276" class="label">保存・閲覧</text>
+  <text x="898" y="330" class="body">Google DriveへPDF保存</text>
+  <text x="898" y="362" class="body">スマホで検索</text>
 
-  <rect x="820" y="210" width="300" height="230" rx="18" class="card"/>
-  <path d="M875 290h190v108H875z" fill="#f5ead8" stroke="#d6aa6f" stroke-width="3"/>
-  <path d="M900 260h120l28 30H900z" fill="#f0d3a8" stroke="#d6aa6f" stroke-width="3"/>
-  <text x="872" y="270" class="label">Googleドライブ</text>
-  <text x="872" y="452" class="small">PDF・写真を保管</text>
+  <path d="M334 323h118M728 323h116" class="line"/>
+  <path d="M438 309l20 14-20 14" class="line"/>
+  <path d="M830 309l20 14-20 14" class="line"/>
 
-  <path d="M390 325h55" class="line"/>
-  <path d="M755 325h65" class="line"/>
-  <path d="M430 312l18 13-18 13" fill="none" stroke="#5c8f8a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M805 312l18 13-18 13" fill="none" stroke="#5c8f8a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="188" y="494" width="250" height="64" rx="14" fill="#fff" stroke="#d7e3e4" stroke-width="2"/>
+  <text x="224" y="534" class="body">登録する商品をチェック</text>
+  <rect x="475" y="494" width="250" height="64" rx="14" fill="#fff" stroke="#d7e3e4" stroke-width="2"/>
+  <text x="526" y="534" class="body">複数PDFを確認</text>
+  <rect x="762" y="494" width="250" height="64" rx="14" fill="#fff" stroke="#d7e3e4" stroke-width="2"/>
+  <text x="794" y="534" class="body">紙の保管先も記録</text>
 
-  <rect x="130" y="490" width="245" height="72" rx="14" fill="#ffffff" stroke="#d7e2df" stroke-width="2"/>
-  <circle cx="170" cy="526" r="18" class="warm"/>
-  <text x="200" y="532" class="small">保証期限を通知</text>
-
-  <rect x="480" y="490" width="245" height="72" rx="14" fill="#ffffff" stroke="#d7e2df" stroke-width="2"/>
-  <circle cx="520" cy="526" r="18" class="accent"/>
-  <text x="550" y="532" class="small">まとめて登録</text>
-
-  <rect x="830" y="490" width="245" height="72" rx="14" fill="#ffffff" stroke="#d7e2df" stroke-width="2"/>
-  <circle cx="870" cy="526" r="18" class="red"/>
-  <text x="900" y="532" class="small">紙の置き場も記録</text>
-
-  <text x="80" y="600" class="tiny">Google Sheets + Apps Script / 外部サーバー不要</text>
+  <text x="78" y="600" class="tiny">Local Web App / OpenAI互換API / Google Drive OAuth</text>
 </svg>

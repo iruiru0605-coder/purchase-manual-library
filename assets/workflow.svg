@@ -1,60 +1,60 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">購入品マニュアル管理の運用フロー</title>
-  <desc id="desc">買った日、まとめ登録、商品一覧、Drive保管、紙マニュアル管理、保証通知までの流れ。</desc>
+  <title id="title">取説ライブラリの運用フロー</title>
+  <desc id="desc">CSV取り込み、候補レビュー、AI探索、Google Drive保存、スマホ閲覧の流れ。</desc>
   <defs>
     <style>
-      .bg { fill: #fbfcfb; }
-      .card { fill: #ffffff; stroke: #dce6e3; stroke-width: 2; rx: 16; }
-      .head { font: 700 25px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17343b; }
-      .body { font: 500 18px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #4f666e; }
-      .num { font: 800 22px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #fff; }
+      .bg { fill: #fbfcfc; }
+      .card { fill: #fff; stroke: #dce7e8; stroke-width: 2; }
+      .head { font: 800 25px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17343b; }
+      .body { font: 600 18px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #516a72; }
+      .num { font: 900 22px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #fff; }
       .line { stroke: #62978f; stroke-width: 4; stroke-linecap: round; fill: none; }
       .dot { fill: #2f8078; }
-      .orange { fill: #d99548; }
+      .gold { fill: #d99548; }
       .muted { fill: #eef5f3; }
     </style>
   </defs>
   <rect width="1200" height="520" class="bg"/>
   <text x="60" y="60" class="head" style="font-size:34px">運用の流れ</text>
-  <text x="60" y="95" class="body">買った日に全部やらなくてOK。写真だけ入れて、あとでまとめて整理します。</text>
+  <text x="60" y="95" class="body">登録の入口は購入履歴。URL手入力ではなく、AI探索と確認でライブラリを作ります。</text>
 
-  <path d="M210 260h110M520 260h110M830 260h110" class="line"/>
-  <path d="M305 248l18 12-18 12" class="line" stroke-linejoin="round"/>
-  <path d="M615 248l18 12-18 12" class="line" stroke-linejoin="round"/>
-  <path d="M925 248l18 12-18 12" class="line" stroke-linejoin="round"/>
+  <path d="M254 260h62M520 260h62M786 260h62" class="line"/>
+  <path d="M302 248l18 12-18 12" class="line"/>
+  <path d="M568 248l18 12-18 12" class="line"/>
+  <path d="M834 248l18 12-18 12" class="line"/>
 
-  <rect x="60" y="150" width="230" height="220" rx="16" class="card"/>
+  <rect x="60" y="150" width="220" height="220" rx="16" class="card"/>
   <circle cx="96" cy="188" r="22" class="dot"/>
   <text x="89" y="196" class="num">1</text>
-  <text x="124" y="196" class="head">買った日</text>
-  <text x="86" y="245" class="body">保証書・レシートを</text>
-  <text x="86" y="278" class="body">Driveの _未整理へ</text>
-  <text x="86" y="330" class="body">シート入力は後でOK</text>
+  <text x="124" y="196" class="head">CSV取り込み</text>
+  <text x="86" y="245" class="body">Amazon / 楽天</text>
+  <text x="86" y="278" class="body">メルカリ</text>
+  <text x="86" y="330" class="body">候補を自動生成</text>
 
-  <rect x="370" y="150" width="230" height="220" rx="16" class="card"/>
-  <circle cx="406" cy="188" r="22" class="dot"/>
-  <text x="399" y="196" class="num">2</text>
-  <text x="434" y="196" class="head">週末整理</text>
-  <text x="396" y="245" class="body">まとめ登録タブに</text>
-  <text x="396" y="278" class="body">数件まとめて入力</text>
-  <text x="396" y="330" class="body">メニューで一括登録</text>
+  <rect x="326" y="150" width="220" height="220" rx="16" class="card"/>
+  <circle cx="362" cy="188" r="22" class="dot"/>
+  <text x="355" y="196" class="num">2</text>
+  <text x="390" y="196" class="head">レビュー</text>
+  <text x="352" y="245" class="body">登録する</text>
+  <text x="352" y="278" class="body">不要</text>
+  <text x="352" y="311" class="body">後で確認</text>
 
-  <rect x="680" y="150" width="230" height="220" rx="16" class="card"/>
-  <circle cx="716" cy="188" r="22" class="dot"/>
-  <text x="709" y="196" class="num">3</text>
-  <text x="744" y="196" class="head">自動作成</text>
-  <text x="706" y="245" class="body">商品ID</text>
-  <text x="706" y="278" class="body">Driveフォルダ</text>
-  <text x="706" y="311" class="body">紙ファイル置き場</text>
+  <rect x="592" y="150" width="220" height="220" rx="16" class="card"/>
+  <circle cx="628" cy="188" r="22" class="gold"/>
+  <text x="621" y="196" class="num">3</text>
+  <text x="656" y="196" class="head">AI探索</text>
+  <text x="618" y="245" class="body">メーカー・型番</text>
+  <text x="618" y="278" class="body">カテゴリ</text>
+  <text x="618" y="311" class="body">公式PDF候補</text>
 
-  <rect x="990" y="150" width="150" height="220" rx="16" class="card"/>
-  <circle cx="1026" cy="188" r="22" class="orange"/>
-  <text x="1019" y="196" class="num">4</text>
-  <text x="1054" y="196" class="head">探す</text>
-  <text x="1016" y="245" class="body">商品一覧で検索</text>
-  <text x="1016" y="278" class="body">Driveへ移動</text>
-  <text x="1016" y="311" class="body">紙の箱も確認</text>
+  <rect x="858" y="150" width="282" height="220" rx="16" class="card"/>
+  <circle cx="894" cy="188" r="22" class="dot"/>
+  <text x="887" y="196" class="num">4</text>
+  <text x="922" y="196" class="head">保存・閲覧</text>
+  <text x="884" y="245" class="body">Google DriveへPDF保存</text>
+  <text x="884" y="278" class="body">紙: カテゴリBOX＋連番</text>
+  <text x="884" y="311" class="body">スマホで検索</text>
 
-  <rect x="160" y="410" width="880" height="62" rx="14" class="muted"/>
-  <text x="210" y="448" class="body">保証期限が近い商品は、週1回メール通知。公式マニュアルがない商品は「後でスキャン」として残せます。</text>
+  <rect x="190" y="410" width="820" height="62" rx="14" class="muted"/>
+  <text x="232" y="448" class="body">PCが止まっても、保存済みPDFはGoogle Driveから直接探せる設計です。</text>
 </svg>

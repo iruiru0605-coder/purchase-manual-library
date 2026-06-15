@@ -1,75 +1,58 @@
-# セットアップ手順
+# セットアップ
 
-このページは、初めて使う人向けの準備手順です。最初だけ少し設定が必要ですが、一度作れば普段はスプレッドシートのメニューから使えます。
+## 必要なもの
 
-## 1. スプレッドシートを作る
+* Node.js 22以降
+* npm
+* Google Driveへ保存する場合はGoogle CloudのOAuthクライアント
+* AI補完を使う場合はOpenAI互換APIキー
 
-Googleスプレッドシートを新規作成し、次の4つのタブを作ります。
+## 起動
+
+```bash
+npm install
+npm run dev
+```
+
+ブラウザで開きます。
 
 ```text
-商品一覧
-まとめ登録
-設定
-使い方
+http://localhost:5173
 ```
 
-各タブの列名は [sheet-schema.md](sheet-schema.md) にまとめています。
+## LLM設定
 
-## 2. Apps Scriptを貼り付ける
-
-スプレッドシートを開いた状態で、上部メニューから次を選びます。
+アプリの `設定` で次を入力します。
 
 ```text
-拡張機能 > Apps Script
+API Base URL
+API Key
+Model Name
 ```
 
-開いた画面の初期ファイルに、[src/Code.gs](../src/Code.gs) の中身を貼り付けます。
-
-権限の範囲を明示したい場合は、Apps Scriptのプロジェクト設定でマニフェスト編集を有効にし、[src/appsscript.json](../src/appsscript.json) の内容を貼り付けます。
-
-## 3. 初期フォルダを作る
-
-Apps Scriptエディタで、次の関数を1回だけ実行します。
+DeepSeekの例:
 
 ```text
-setupManualLibrary
+https://api.deepseek.com/v1
+deepseek-chat
 ```
 
-初回実行時はGoogleの権限承認が出ます。承認すると、Googleドライブに次のフォルダが作られます。
+## Google Drive設定
+
+Google CloudでOAuthクライアントを作り、リダイレクトURIに次を登録します。
 
 ```text
-購入品マニュアル/
-└── _未整理/
+http://localhost:5174/api/google/oauth/callback
 ```
 
-作成されたフォルダURLは `設定` タブにも自動で書き込まれます。
+アプリの `設定` にClient IDとClient Secretを入力し、`Google Driveにログイン` を押します。
 
-## 4. 保証期限通知を有効にする
+## LAN内スマホ閲覧
 
-保証期限が近い商品をメールで受け取りたい場合は、次の関数を1回実行します。
+PCとスマホを同じWi-Fiに接続し、PCのIPアドレスを調べます。
 
 ```text
-createWeeklyWarrantyTrigger
+http://PCのIPアドレス:5173
 ```
 
-これで、毎週月曜の朝に保証期限チェックが走ります。毎日通知にすると同じ商品が何度も届きやすいため、週1回を標準にしています。
-
-## 5. スプレッドシートを再読み込みする
-
-スプレッドシートを再読み込みすると、上部メニューに次が表示されます。
-
-```text
-マニュアル管理
-```
-
-表示されたら準備完了です。
-
-## 通知先メールアドレス
-
-[src/Code.gs](../src/Code.gs) では、初期状態の通知先が空欄です。
-
-```javascript
-const NOTIFY_EMAIL = '';
-```
-
-空欄のままなら、実行しているGoogleアカウントのメールアドレスを使います。Google Workspaceの設定によって取得できない場合は、ここに通知先メールアドレスを直接入れてください。
+停電などでPCが使えない場合は、Google Driveに保存されたPDFを直接探します。
