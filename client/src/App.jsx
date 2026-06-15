@@ -619,6 +619,10 @@ function SettingsView({ state, onRun }) {
         <Field label="OAuth Client Secret" type="password" value={settings.googleDrive.clientSecret} onChange={value => update('googleDrive.clientSecret', value)} />
         <Field label="Redirect URI" value={settings.googleDrive.redirectUri} onChange={value => update('googleDrive.redirectUri', value)} />
         <Field label="Driveルートフォルダ名" value={settings.googleDrive.rootFolderName} onChange={value => update('googleDrive.rootFolderName', value)} />
+        <div className="security-note">
+          <strong>保存情報について</strong>
+          <p>APIキー、Client Secret、Google認証トークンはこのPC内の `.manual-library/` に保存します。GitHubには含めません。家のLAN外へ公開したり、共有PCで使ったりする場合は注意してください。</p>
+        </div>
         <details className="oauth-guide" open>
           <summary>OAuthクライアントIDとシークレットの取得方法</summary>
           <ol>

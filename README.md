@@ -167,6 +167,8 @@ Google Drive/
 
 このフォルダは `.gitignore` 済みです。
 
+`settings.json` にはLLM APIキーとGoogle OAuth Client Secret、`google-tokens.json` にはGoogle Drive接続トークンが入ります。保存時は本人ユーザーだけが読めるファイル権限にしますが、平文保存です。家のLAN内で使う前提にし、ルーターのポート開放や公開トンネルでインターネットへ出さないでください。
+
 ## ファイル構成
 
 ```text

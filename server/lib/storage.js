@@ -15,8 +15,10 @@ const emptyDb = {
 };
 
 export async function ensureDataDir() {
-  await fsp.mkdir(DATA_DIR, { recursive: true });
-  await fsp.mkdir(ARCHIVE_DIR, { recursive: true });
+  await fsp.mkdir(DATA_DIR, { recursive: true, mode: 0o700 });
+  await fsp.chmod(DATA_DIR, 0o700).catch(() => {});
+  await fsp.mkdir(ARCHIVE_DIR, { recursive: true, mode: 0o700 });
+  await fsp.chmod(ARCHIVE_DIR, 0o700).catch(() => {});
   if (!fs.existsSync(DB_PATH)) {
     await writeJson(DB_PATH, emptyDb);
   }
@@ -117,7 +119,8 @@ async function readJson(filePath, fallback) {
 
 async function writeJson(filePath, value) {
   await fsp.mkdir(path.dirname(filePath), { recursive: true });
-  await fsp.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
+  await fsp.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
+  await fsp.chmod(filePath, 0o600).catch(() => {});
 }
 
 function mergeSettings(base, patch) {

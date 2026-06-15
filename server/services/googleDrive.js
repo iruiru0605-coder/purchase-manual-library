@@ -30,7 +30,7 @@ export async function makeGoogleAuthUrl() {
 export async function handleGoogleOAuthCallback(code) {
   const auth = await makeOAuthClient();
   const { tokens } = await auth.getToken(code);
-  await fs.promises.writeFile(GOOGLE_TOKENS_PATH, `${JSON.stringify(tokens, null, 2)}\n`);
+  await writeTokenFile(tokens);
   return tokens;
 }
 
@@ -86,9 +86,14 @@ async function makeAuthenticatedClient() {
   auth.setCredentials(tokens);
   auth.on('tokens', async nextTokens => {
     const merged = { ...tokens, ...nextTokens };
-    await fs.promises.writeFile(GOOGLE_TOKENS_PATH, `${JSON.stringify(merged, null, 2)}\n`);
+    await writeTokenFile(merged);
   });
   return auth;
+}
+
+async function writeTokenFile(tokens) {
+  await fs.promises.writeFile(GOOGLE_TOKENS_PATH, `${JSON.stringify(tokens, null, 2)}\n`, { mode: 0o600 });
+  await fs.promises.chmod(GOOGLE_TOKENS_PATH, 0o600).catch(() => {});
 }
 
 async function getOrCreateFolder(drive, name, parentId = null) {

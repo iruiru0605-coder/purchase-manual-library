@@ -764,6 +764,27 @@ td small,
   border-top: 1px solid #dbe6e8;
 }
 
+.security-note {
+  margin: 14px 16px 0;
+  padding: 10px 12px;
+  border: 1px solid #d7e5e2;
+  border-radius: 8px;
+  background: #f3faf7;
+}
+
+.security-note strong {
+  display: block;
+  color: #17343b;
+  font-size: 13px;
+}
+
+.security-note p {
+  margin: 5px 0 0;
+  color: #4e666d;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .oauth-guide summary {
   cursor: pointer;
   color: #17343b;
