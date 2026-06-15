@@ -13,9 +13,9 @@ const FIELD_ALIASES = {
 };
 
 const REGISTER_HINTS = [
-  '家電', '炊飯器', 'レンジ', '冷蔵庫', '洗濯機', '掃除機', '食洗機', '空気清浄機', '照明',
+  '家電', '炊飯器', 'レンジ', '冷蔵庫', '洗濯機', '掃除機', '食洗機', '食器洗い', '空気清浄機', '照明',
   'モニター', 'ディスプレイ', 'pc', 'パソコン', 'プリンタ', 'ルーター', 'ssd', 'hdd',
-  '充電器', 'バッテリー', 'anker', 'usb', 'bluetooth', 'イヤホン', 'スピーカー',
+  '充電器', 'charger', 'バッテリー', 'anker', 'usb', 'bluetooth', 'イヤホン', 'スピーカー',
   '家具', '椅子', 'チェア', '机', 'デスク', '棚', 'ラック', 'ベッド',
   '工具', 'ドリル', 'ドライバー', 'makita', 'bosch', 'hikoki',
   '子ども', 'ベビー', 'チャイルドシート', 'ベビーカー',
@@ -45,7 +45,7 @@ export function parsePurchaseCsv(buffer, { source = 'Amazon' } = {}) {
   const importId = makeImportId();
   const importedAt = new Date().toISOString();
   const rows = parsed.data
-    .map((row, index) => makeCandidate(row, index, { source, importId, importedAt, headers }))
+    .map((row, index) => makeCandidateFromRow(row, index, { source, importId, importedAt, headers }))
     .filter(candidate => candidate.title || Object.values(candidate.raw || {}).some(Boolean));
 
   return {
@@ -66,7 +66,7 @@ function normalizeCsvText(buffer) {
   return buffer.toString('utf8').replace(/^\uFEFF/, '');
 }
 
-function makeCandidate(row, index, context) {
+export function makeCandidateFromRow(row, index, context) {
   const title = pick(row, FIELD_ALIASES.title);
   const score = estimateRegistrationScore(title, row);
   return {
@@ -118,7 +118,7 @@ function normalizePrice(value) {
   return text ? Number(text) : null;
 }
 
-function estimateRegistrationScore(title, row) {
+export function estimateRegistrationScore(title, row) {
   const text = `${title} ${Object.values(row).join(' ')}`.toLowerCase();
   let score = 35;
   if (REGISTER_HINTS.some(word => text.includes(word.toLowerCase()))) score += 45;

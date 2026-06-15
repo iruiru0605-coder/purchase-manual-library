@@ -19,7 +19,7 @@ import {
   Upload,
   X
 } from 'lucide-react';
-import { apiGet, apiPost, apiUploadCsv } from './api.js';
+import { apiGet, apiImportText, apiPost, apiUploadCsv } from './api.js';
 
 const TABS = [
   { id: 'inbox', label: '購入履歴Inbox', icon: Upload },
@@ -154,6 +154,7 @@ export default function App() {
 function Inbox({ candidates, selectedCandidate, setSelectedId, onRun, busy }) {
   const [source, setSource] = useState('Amazon');
   const [file, setFile] = useState(null);
+  const [pastedText, setPastedText] = useState('');
   const visible = useMemo(() => candidates.filter(item => item.status !== 'registered'), [candidates]);
 
   async function uploadCsv() {
@@ -162,12 +163,18 @@ function Inbox({ candidates, selectedCandidate, setSelectedId, onRun, busy }) {
     return { message: `${result.candidates.length}件を取り込みました。` };
   }
 
+  async function importPastedText() {
+    const result = await apiImportText(pastedText, source);
+    setPastedText('');
+    return { message: `${result.candidates.length}件を貼り付けテキストから取り込みました。` };
+  }
+
   return (
     <div className="inbox-layout">
       <section className="panel import-panel">
         <div className="panel-head">
-          <h2><Upload size={18} />CSV取り込み</h2>
-          <span>Amazon優先。楽天・メルカリも同じ入口で受けます。</span>
+          <h2><Upload size={18} />取り込み</h2>
+          <span>CSVがなくても、購入履歴ページのコピー貼り付けで候補化できます。</span>
         </div>
         <div className="import-controls">
           <select value={source} onChange={event => setSource(event.target.value)}>
@@ -182,6 +189,20 @@ function Inbox({ candidates, selectedCandidate, setSelectedId, onRun, busy }) {
           </label>
           <button className="primary" onClick={() => onRun('CSVを取り込んでいます...', uploadCsv)} disabled={Boolean(busy)}>
             <Upload size={16} />取り込む
+          </button>
+        </div>
+        <div className="paste-import">
+          <div>
+            <strong>購入履歴ページを貼り付け</strong>
+            <span>Amazonや楽天の購入履歴画面で、注文カード周辺を選択してコピーし、ここへ貼り付けます。</span>
+          </div>
+          <textarea
+            value={pastedText}
+            onChange={event => setPastedText(event.target.value)}
+            placeholder={'例:\n注文日 2026年6月12日\n注文番号 123-4567890-1234567\nPanasonic 食器洗い乾燥機 NP-TZ300-W\n￥76,800'}
+          />
+          <button onClick={() => onRun('貼り付けテキストを解析しています...', importPastedText)} disabled={Boolean(busy) || !pastedText.trim()}>
+            <FileSearch size={16} />貼り付けから取り込む
           </button>
         </div>
       </section>

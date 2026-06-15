@@ -23,6 +23,10 @@ export async function apiUploadCsv(file, source) {
   return parseResponse(response);
 }
 
+export async function apiImportText(text, source) {
+  return apiPost('/api/imports/text', { text, source });
+}
+
 async function parseResponse(response) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {

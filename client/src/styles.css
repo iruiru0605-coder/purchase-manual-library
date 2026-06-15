@@ -242,6 +242,40 @@ nav {
   gap: 10px;
 }
 
+.paste-import {
+  border-top: 1px solid #edf2f3;
+  padding: 14px 16px 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.paste-import strong,
+.paste-import span {
+  display: block;
+}
+
+.paste-import strong {
+  font-size: 14px;
+}
+
+.paste-import span {
+  color: #6e8289;
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.paste-import textarea {
+  width: 100%;
+  min-height: 130px;
+  resize: vertical;
+  border: 1px solid #cfdadd;
+  border-radius: 8px;
+  padding: 10px;
+  color: #17292f;
+  background: #fbfcfc;
+  line-height: 1.45;
+}
+
 select,
 input {
   width: 100%;

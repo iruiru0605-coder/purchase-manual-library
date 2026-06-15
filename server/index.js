@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PORT } from './config.js';
 import { parsePurchaseCsv } from './services/csvImport.js';
+import { parsePurchaseText } from './services/textImport.js';
 import { enrichCandidateWithLlm } from './services/llm.js';
 import { searchManualCandidates } from './services/manualSearch.js';
 import { getDriveStatus, handleGoogleOAuthCallback, makeGoogleAuthUrl } from './services/googleDrive.js';
@@ -66,6 +67,21 @@ app.post('/api/imports/csv', upload.single('file'), async (req, res, next) => {
     if (!req.file) throw new Error('CSVファイルを選択してください。');
     const source = req.body.source || 'Amazon';
     const parsed = parsePurchaseCsv(req.file.buffer, { source });
+    const result = await mutateDb(db => {
+      db.imports.unshift(parsed.importRecord);
+      db.candidates.unshift(...parsed.candidates);
+      return parsed;
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/imports/text', async (req, res, next) => {
+  try {
+    const source = req.body.source || 'Amazon';
+    const parsed = parsePurchaseText(req.body.text || '', { source });
     const result = await mutateDb(db => {
       db.imports.unshift(parsed.importRecord);
       db.candidates.unshift(...parsed.candidates);
