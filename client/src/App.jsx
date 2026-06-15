@@ -540,6 +540,7 @@ function ProductCard({ product, categories, onRun }) {
 
 function SettingsView({ state, onRun }) {
   const [settings, setSettings] = useState(state?.settings || null);
+  const [copiedRedirect, setCopiedRedirect] = useState(false);
 
   useEffect(() => {
     setSettings(state?.settings || null);
@@ -583,6 +584,16 @@ function SettingsView({ state, onRun }) {
     }));
   }
 
+  async function copyRedirectUri() {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(settings.googleDrive.redirectUri);
+    } else {
+      window.prompt('このRedirect URIをコピーしてください', settings.googleDrive.redirectUri);
+    }
+    setCopiedRedirect(true);
+    window.setTimeout(() => setCopiedRedirect(false), 1800);
+  }
+
   return (
     <div className="settings-layout">
       <section className="panel settings-panel">
@@ -608,6 +619,24 @@ function SettingsView({ state, onRun }) {
         <Field label="OAuth Client Secret" type="password" value={settings.googleDrive.clientSecret} onChange={value => update('googleDrive.clientSecret', value)} />
         <Field label="Redirect URI" value={settings.googleDrive.redirectUri} onChange={value => update('googleDrive.redirectUri', value)} />
         <Field label="Driveルートフォルダ名" value={settings.googleDrive.rootFolderName} onChange={value => update('googleDrive.rootFolderName', value)} />
+        <details className="oauth-guide" open>
+          <summary>OAuthクライアントIDとシークレットの取得方法</summary>
+          <ol>
+            <li><a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer">Google Cloud Console</a>を開き、Google Driveを使うGoogleアカウントでログインします。</li>
+            <li>上部のプロジェクト選択から新しいプロジェクトを作成します。名前は「取説ライブラリ」などで構いません。</li>
+            <li>「APIとサービス」→「ライブラリ」で「Google Drive API」を検索し、「有効にする」を押します。</li>
+            <li>「Google Auth platform」または「OAuth同意画面」を開きます。未設定なら「開始」を押し、アプリ名、サポートメール、連絡先メールを入力します。</li>
+            <li>個人のGmailで使う場合はユーザー種別を「外部」にします。テスト公開のまま使う場合は、自分と家族のGoogleアカウントをテストユーザーに追加します。</li>
+            <li>「クライアント」または「認証情報」→「OAuthクライアントIDを作成」を押し、アプリケーションの種類は「ウェブ アプリケーション」を選びます。</li>
+            <li>「承認済みのリダイレクトURI」に下の値をそのまま追加して作成します。</li>
+            <li>作成後に表示される「クライアントID」と「クライアントシークレット」を、この画面の入力欄に貼り付けて保存します。</li>
+          </ol>
+          <div className="redirect-copy-row">
+            <code>{settings.googleDrive.redirectUri}</code>
+            <button type="button" onClick={copyRedirectUri}>{copiedRedirect ? 'コピー済み' : 'Redirect URIをコピー'}</button>
+          </div>
+          <p>保存後に「Google Driveにログイン」を押し、Googleの許可画面でアクセスを許可するとDrive保存が使えるようになります。</p>
+        </details>
         <div className="action-row">
           <button className="primary" onClick={save}><Settings size={16} />設定を保存</button>
           <button onClick={googleLogin}><HardDrive size={16} />Google Driveにログイン</button>
