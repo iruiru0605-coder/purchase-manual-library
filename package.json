@@ -9,7 +9,7 @@
     "dev:server": "node server/index.js",
     "dev:client": "vite --host 0.0.0.0",
     "build": "vite build",
-    "start": "NODE_ENV=production node server/index.js",
+    "start": "node scripts/start-production.js",
     "test": "node --test server/services/*.test.js",
     "check": "npm run build"
   },

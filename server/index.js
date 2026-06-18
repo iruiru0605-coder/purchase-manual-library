@@ -1,20 +1,22 @@
 import express from 'express';
 import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
+import { spawn } from 'node:child_process';
 import multer from 'multer';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ARCHIVE_DIR, PORT } from './config.js';
+import { ARCHIVE_DIR, PORT, TRASH_DIR } from './config.js';
 import { parsePurchaseCsv } from './services/csvImport.js';
 import { parsePurchaseText } from './services/textImport.js';
 import { enrichCandidateWithLlm } from './services/llm.js';
 import { searchManualCandidates } from './services/manualSearch.js';
-import { getDriveStatus, handleGoogleOAuthCallback, makeGoogleAuthUrl, uploadPdfToDrive } from './services/googleDrive.js';
+import { getDriveStatus, handleGoogleOAuthCallback, makeGoogleAuthUrl, moveDriveFileToTrashFolder, uploadPdfToDrive } from './services/googleDrive.js';
 import { registerCandidate, removeProduct, updateProductFields } from './services/products.js';
 import { buildTemplateCsv } from './services/stores.js';
 import {
   ensureDataDir,
   makeManualId,
+  moveLocalFileToTrash,
   saveLocalPdf,
   saveLocalProductImage,
   mutateDb,
@@ -46,8 +48,22 @@ app.get('/api/state', async (_req, res, next) => {
       candidates: db.candidates,
       products: db.products,
       settings,
-      drive
+      drive,
+      trash: {
+        localPath: TRASH_DIR,
+        driveFolderName: '_削除予定'
+      }
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/trash/open', async (_req, res, next) => {
+  try {
+    await fs.mkdir(TRASH_DIR, { recursive: true });
+    openFolder(TRASH_DIR);
+    res.json({ ok: true, path: TRASH_DIR });
   } catch (error) {
     next(error);
   }
@@ -239,8 +255,8 @@ app.patch('/api/products/:id', async (req, res, next) => {
 app.delete('/api/products/:id', async (req, res, next) => {
   try {
     const product = await mutateDb(db => removeProduct(db, req.params.id));
-    await cleanupLocalManualFiles(product);
-    await cleanupLocalProductImage(product);
+    await moveManualFilesToTrash(product);
+    await moveProductImageToTrash(product);
     res.json({ ok: true, removed: product });
   } catch (error) {
     next(error);
@@ -261,7 +277,7 @@ app.post('/api/products/:id/image', upload.single('file'), async (req, res, next
     const product = db.products.find(item => item.id === req.params.id || item.productId === req.params.id);
     if (!product) throw new Error('商品が見つかりません。');
 
-    await cleanupLocalProductImage(product);
+    await moveProductImageToTrash(product);
     product.image = await saveLocalProductImage(product, req.file);
     product.updatedAt = new Date().toISOString();
     await writeDb(db);
@@ -277,7 +293,7 @@ app.delete('/api/products/:id/image', async (req, res, next) => {
     const product = db.products.find(item => item.id === req.params.id || item.productId === req.params.id);
     if (!product) throw new Error('商品が見つかりません。');
     const removed = product.image || null;
-    await cleanupLocalProductImage(product);
+    await moveProductImageToTrash(product);
     delete product.image;
     product.updatedAt = new Date().toISOString();
     await writeDb(db);
@@ -361,9 +377,7 @@ app.delete('/api/products/:productId/manuals/:manualId', async (req, res, next) 
     const index = (product.manuals || []).findIndex(manual => manual.id === req.params.manualId);
     if (index < 0) throw new Error('PDFが見つかりません。');
     const [removed] = product.manuals.splice(index, 1);
-    if (removed.archive?.storage === 'local' && removed.archive.path) {
-      await fs.unlink(removed.archive.path).catch(() => {});
-    }
+    await moveManualFileToTrash(product, removed);
     product.updatedAt = new Date().toISOString();
     await writeDb(db);
     res.json({ ok: true, removed });
@@ -482,17 +496,40 @@ function findCandidate(db, id) {
   return candidate;
 }
 
-async function cleanupLocalManualFiles(product) {
+async function moveManualFilesToTrash(product) {
   const manuals = product?.manuals || [];
   await Promise.all(manuals.map(async manual => {
-    if (manual.archive?.storage !== 'local' || !manual.archive.path) return;
-    await fs.unlink(manual.archive.path).catch(() => {});
+    await moveManualFileToTrash(product, manual);
   }));
 }
 
-async function cleanupLocalProductImage(product) {
+async function moveManualFileToTrash(product, manual) {
+  if (manual?.archive?.storage === 'local' && manual.archive.path) {
+    await moveLocalFileToTrash(manual.archive.path, { product, label: 'manual' }).catch(() => {});
+  }
+  if (manual?.archive?.storage === 'google-drive') {
+    await moveDriveFileToTrashFolder(manual.archive, { product }).catch(() => {});
+  }
+}
+
+async function moveProductImageToTrash(product) {
   if (product?.image?.storage !== 'local' || !product.image.path) return;
-  await fs.unlink(product.image.path).catch(() => {});
+  await moveLocalFileToTrash(product.image.path, { product, label: 'image' }).catch(() => {});
+}
+
+function openFolder(folderPath) {
+  if (process.platform === 'win32') {
+    // ランチャー経由のデタッチ/非表示コンテキストでも画面に表示されるよう、
+    // ブラウザ起動（openBrowser）と同じ `cmd /c start` 方式を使う。
+    // explorer の直接spawnでは、非表示サーバーからだとウィンドウが出ないことがある。
+    spawn('cmd.exe', ['/c', 'start', '', folderPath], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    return;
+  }
+  if (process.platform === 'darwin') {
+    spawn('open', [folderPath], { detached: true, stdio: 'ignore' }).unref();
+    return;
+  }
+  spawn('xdg-open', [folderPath], { detached: true, stdio: 'ignore' }).unref();
 }
 
 function isSupportedImage(file) {

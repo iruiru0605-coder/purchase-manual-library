@@ -68,6 +68,41 @@ export async function uploadPdfToDrive({ product, manual, buffer }) {
   };
 }
 
+export async function moveDriveFileToTrashFolder(archive, { product } = {}) {
+  if (!archive?.fileId) return null;
+  const auth = await makeAuthenticatedClient();
+  const drive = google.drive({ version: 'v3', auth });
+  const settings = await readSettings({ revealSecrets: true });
+  const rootName = settings.googleDrive?.rootFolderName || '取扱説明書ライブラリ';
+  const rootFolderId = await getOrCreateFolder(drive, rootName);
+  const trashFolderId = await getOrCreateFolder(drive, '_削除予定', rootFolderId);
+
+  const current = await drive.files.get({
+    fileId: archive.fileId,
+    fields: 'id,name,parents,webViewLink'
+  });
+  const parents = current.data.parents || [];
+  const removeParents = parents.filter(parentId => parentId !== trashFolderId).join(',');
+  const date = new Date().toISOString().slice(0, 10);
+  const productName = makeSafeSegment(`${product?.productId || product?.id || ''}_${product?.name || ''}`);
+  const nextName = makeSafeSegment(`${date}_${productName}_${current.data.name || archive.name || 'manual.pdf'}`);
+
+  const moved = await drive.files.update({
+    fileId: archive.fileId,
+    addParents: trashFolderId,
+    removeParents: removeParents || undefined,
+    requestBody: { name: nextName },
+    fields: 'id,name,webViewLink,parents'
+  });
+
+  return {
+    fileId: moved.data.id,
+    name: moved.data.name,
+    webViewLink: moved.data.webViewLink,
+    folderId: trashFolderId
+  };
+}
+
 async function makeOAuthClient() {
   const settings = await readSettings({ revealSecrets: true });
   const { clientId, clientSecret, redirectUri } = settings.googleDrive || {};

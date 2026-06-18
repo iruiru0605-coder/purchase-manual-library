@@ -53,16 +53,21 @@
 - 自宅外からの**自分だけのアクセスは Tailscale（プライベートVPN）**を使用（自分の端末のみ）。アプリレベルの認証は未実装・不要（Tailscaleがアクセス制御）。
 - 現在は `npm run dev`（開発サーバー）で稼働中。常時アクセスには本番ビルド（`npm run build` → `npm start`）＋PC起動時の自動起動が推奨（未設定）。
 
+## Codex追加対応（2026-06-18）
+- `server/services/products.js` の `registerCandidate` にもDrive未認証・Driveアップロード失敗時のローカル自動退避を適用。
+- Windowsで `npm start` が動くよう、`scripts/start-production.js` 経由で `NODE_ENV=production` を設定。
+- 初心者向けにデスクトップアイコン起動を追加。`scripts/install-windows-shortcut.ps1` で `取説ライブラリ.lnk` を作成し、`scripts/start-windows.ps1` がビルド確認・サーバー起動・ブラウザ表示を行う。
+- ユーザー提供画像を `assets/app-icon.jpg` / `assets/app-icon.ico` として追加。
+
 ## 動作確認
 - `npm test`: 合格（画像URL系テストは機能削除で除去、現在1件）。
 - `npm run build`: 成功。
 - 実機: スマホ（Tailscale経由 `http://<PCのTailscale IP>:5173`）でライブラリ表示・操作を確認。
 
 ## 残件（Codexへの引き継ぎ候補）
-1. **`server/services/products.js` の `registerCandidate`** にも #1 と同じ「Drive未認証で throw」の箇所が残存。同様のフォールバック化を推奨。
-2. **`styles.css` の重複定義の本格整理**（モバイル問題の根本原因。現状は末尾追記で凌ぎ中）。
-3. **本番ビルド＋PC起動時自動起動**の設定（常時アクセス化）。
-4. （必要なら）コミットの粒度整理。本ファイル作成時点では包括的に1コミット予定。
+1. **`styles.css` の重複定義の本格整理**（モバイル問題の根本原因。現状は末尾追記で凌ぎ中）。
+2. **PC起動時自動起動**の設定（常時アクセス化）。デスクトップアイコン起動は追加済み。
+3. （必要なら）コミットの粒度整理。
 
 ## 起動方法
 ```bash
@@ -70,5 +75,8 @@ npm install
 npm run dev      # 開発: http://localhost:5173
 # 本番運用:
 npm run build
-npm start        # NODE_ENV=production node server/index.js（dist/ を配信）
+npm start        # node scripts/start-production.js（dist/ を配信）
+
+# Windowsのデスクトップアイコンを作成:
+powershell -ExecutionPolicy Bypass -File .\scripts\install-windows-shortcut.ps1
 ```

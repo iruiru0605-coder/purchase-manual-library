@@ -40,16 +40,27 @@ export async function registerCandidate(db, candidateId, { selectedManualIds = [
 
   const driveStatus = await getDriveStatus();
   const useGoogleDrive = wantsGoogleDrive(settings);
-  if (selected.length > 0 && useGoogleDrive && !driveReady(driveStatus)) {
-    throw new Error('保存先がGoogle Driveになっていますが、Google Driveに未ログインです。設定でログインするか、保存先をローカルに切り替えてください。');
-  }
+  const driveAvailable = useGoogleDrive && driveReady(driveStatus);
 
   for (const manual of selected) {
     try {
       const buffer = await downloadPdf(manual.url);
-      const storage = useGoogleDrive
-        ? await uploadPdfToDrive({ product, manual, buffer })
-        : await saveLocalPdf(product, manual, buffer);
+      let storage = null;
+      let driveFallback = false;
+      if (driveAvailable) {
+        try {
+          storage = await uploadPdfToDrive({ product, manual, buffer });
+        } catch {
+          storage = null;
+        }
+      }
+      if (!storage) {
+        if (useGoogleDrive) driveFallback = true;
+        storage = await saveLocalPdf(product, manual, buffer);
+      }
+      if (driveFallback) {
+        storage.fallbackReason = 'drive-unavailable';
+      }
       product.manuals.push({
         ...manual,
         archiveStatus: 'saved',

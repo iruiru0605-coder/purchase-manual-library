@@ -1,12 +1,19 @@
 # 取説ライブラリ
 
-![取説ライブラリ](assets/main_visual.svg)
+![取説ライブラリ](assets/promo.png)
 
 **取説ライブラリ**は、Amazon・楽天・メルカリなどで買った商品の取扱説明書PDF、保証情報、紙マニュアルの保管場所をまとめて管理するローカルWebアプリです。
 
 購入履歴ページをコピーして貼り付けるだけで登録候補を作り、必要な商品だけ選んでライブラリ化できます。スプレッドシートではなく、見やすいアプリ画面で使うことを前提にしています。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+## 画面イメージ
+
+<p>
+  <img src="assets/ui-1.jpg" width="46%" alt="アプリ画面イメージ1">
+  <img src="assets/ui-2.jpg" width="46%" alt="アプリ画面イメージ2">
+</p>
 
 ## どんな人向け？
 
@@ -68,6 +75,16 @@ npm install
 ```
 
 ### 4. 起動する
+
+Windowsでデスクトップアイコンから起動したい場合は、最初に1回だけ次を実行します。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-windows-shortcut.ps1
+```
+
+デスクトップに `取説ライブラリ` アイコンが作られます。次回からはそのアイコンをダブルクリックすると、必要に応じてビルドを作成し、アプリをブラウザで開きます。
+
+ターミナルから起動する場合:
 
 ```bash
 npm run dev
@@ -164,6 +181,7 @@ AI設定が未入力でも、商品名からできる範囲で推定します。
 * PDFを後からアップロード
 * 古いPDFを削除して入れ替え
 * 誤って登録した商品を削除
+* 削除したローカルPDF・製品画像を削除予定フォルダへ退避し、後から確認して手動削除できる
 
 公式PDFが見つからない場合:
 
@@ -229,7 +247,8 @@ API Key: 自分のAPIキー
 ├ db.json
 ├ settings.json
 ├ google-tokens.json
-└ archive/
+├ archive/
+└ trash/
 ```
 
 このフォルダは `.gitignore` 済みなので、GitHubには入りません。
@@ -237,6 +256,8 @@ API Key: 自分のAPIキー
 ただし、`settings.json` にはLLM APIキーとGoogle OAuth Client Secret、`google-tokens.json` にはGoogle Drive接続トークンが入ります。保存時は本人ユーザーだけが読めるファイル権限にしますが、平文保存です。
 
 このアプリは家のLAN内で使う前提です。ルーターのポート開放、ngrok、Cloudflare Tunnelなどでインターネット公開しないでください。
+
+商品やPDF情報を削除したとき、ローカル保存済みのPDF・製品画像はすぐ完全削除せず `.manual-library/trash/` に移動します。アプリの `設定 > 削除予定フォルダ` から場所を確認し、必要に応じて手動で削除してください。Google Drive保存済みPDFはDrive内の `_削除予定` フォルダへ移動します。
 
 ## よくある困りごと
 
@@ -247,6 +268,8 @@ API Key: 自分のAPIキー
 ```bash
 npm run dev
 ```
+
+Windowsでデスクトップアイコンを作成済みの場合は、デスクトップの `取説ライブラリ` アイコンをダブルクリックして起動できます。
 
 ### `Failed to fetch` と出る
 

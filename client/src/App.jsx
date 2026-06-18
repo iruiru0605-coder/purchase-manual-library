@@ -52,15 +52,20 @@ export default function App() {
   }, []);
 
   const candidates = state?.candidates || [];
-  const selectedCandidate = candidates.find(item => item.id === selectedId) || candidates[0] || null;
+  const activeCandidates = useMemo(() => candidates.filter(item => item.status !== 'registered'), [candidates]);
+  const selectedCandidate = activeCandidates.find(item => item.id === selectedId) || activeCandidates[0] || null;
   const productCount = state?.products?.length || 0;
   const driveConnected = Boolean(state?.drive?.authenticated);
   const driveStorageEnabled = wantsGoogleDrive(state?.settings);
-  const acceptedCount = candidates.filter(item => item.status === 'accepted').length;
+  const acceptedCount = activeCandidates.filter(item => item.status === 'accepted').length;
 
   useEffect(() => {
-    if (!selectedId && candidates[0]) setSelectedId(candidates[0].id);
-  }, [candidates, selectedId]);
+    if (selectedCandidate && selectedCandidate.id !== selectedId) {
+      setSelectedId(selectedCandidate.id);
+    } else if (!selectedCandidate && selectedId) {
+      setSelectedId(null);
+    }
+  }, [selectedCandidate, selectedId]);
 
   async function refresh() {
     setError('');
@@ -115,7 +120,7 @@ export default function App() {
           })}
         </nav>
         <div className="sidebar-status">
-          <div><Database size={16} /> 候補 {candidates.length}件</div>
+          <div><Database size={16} /> 候補 {activeCandidates.length}件</div>
           <div><Archive size={16} /> 登録済み {productCount}件</div>
           <div><HardDrive size={16} /> Drive {driveConnected ? '接続済み' : '未接続'}</div>
         </div>
@@ -132,7 +137,7 @@ export default function App() {
           </header>
 
           <section className="overview-strip" aria-label="利用状況">
-            <MetricCard icon={Database} label="登録候補" value={`${candidates.length}件`} tone="blue" />
+            <MetricCard icon={Database} label="登録候補" value={`${activeCandidates.length}件`} tone="blue" />
             <MetricCard icon={ShieldCheck} label="登録予定" value={`${acceptedCount}件`} tone="green" />
             <MetricCard icon={Archive} label="登録済み" value={`${productCount}件`} tone="orange" />
             <div className="metric-card drive-metric">
@@ -153,7 +158,7 @@ export default function App() {
 
           {activeTab === 'inbox' && (
             <Inbox
-              candidates={candidates}
+              candidates={activeCandidates}
               selectedCandidate={selectedCandidate}
               setSelectedId={setSelectedId}
               onRun={run}
@@ -184,7 +189,6 @@ function Inbox({ candidates, selectedCandidate, setSelectedId, onRun, busy }) {
   const [source, setSource] = useState('Amazon');
   const [file, setFile] = useState(null);
   const [pastedText, setPastedText] = useState('');
-  const visible = useMemo(() => candidates.filter(item => item.status !== 'registered'), [candidates]);
 
   async function uploadCsv() {
     if (!file) throw new Error('CSVファイルを選択してください。');
@@ -242,7 +246,7 @@ function Inbox({ candidates, selectedCandidate, setSelectedId, onRun, busy }) {
         <div className="candidate-list panel">
           <div className="panel-head compact">
             <h2><ShieldCheck size={18} />登録候補</h2>
-            <span>{visible.length}件</span>
+            <span>{candidates.length}件</span>
           </div>
           <div className="table-scroll">
             <table>
@@ -256,7 +260,7 @@ function Inbox({ candidates, selectedCandidate, setSelectedId, onRun, busy }) {
                 </tr>
               </thead>
               <tbody>
-                {visible.map(candidate => (
+                {candidates.map(candidate => (
                   <tr key={candidate.id} className={selectedCandidate?.id === candidate.id ? 'selected' : ''}>
                     <td><StatusBadge status={candidate.status} /></td>
                     <td>
@@ -270,7 +274,7 @@ function Inbox({ candidates, selectedCandidate, setSelectedId, onRun, busy }) {
                     <td><ChevronRight size={16} /></td>
                   </tr>
                 ))}
-                {visible.length === 0 && (
+                {candidates.length === 0 && (
                   <tr><td colSpan="5" className="empty">CSVを取り込むと、ここに登録候補が表示されます。</td></tr>
                 )}
               </tbody>
@@ -677,21 +681,24 @@ function SettingsView({ state, onRun }) {
     <div className="settings-layout">
       <section className="panel settings-panel">
         <div className="panel-head">
-          <h2><Bot size={18} />LLM設定</h2>
+          <h2><Bot size={18} />取込み自動補完（AI設定）</h2>
           <span>DeepSeekなどOpenAI互換APIを指定できます。</span>
         </div>
         <div className="action-row">
           <button onClick={applyDeepSeekDefaults}><Bot size={16} />DeepSeek v4 推奨値を入力</button>
+          <button className="primary" onClick={save}><Settings size={16} />設定を保存</button>
         </div>
+        <div className="settings-fields">
         <Field label="Provider名" value={settings.llm.providerName} onChange={value => update('llm.providerName', value)} />
         <Field label="API Base URL" value={settings.llm.apiBaseUrl} onChange={value => update('llm.apiBaseUrl', value)} />
         <Field label="Model Name" value={settings.llm.model} onChange={value => update('llm.model', value)} />
         <Field label="API Key" type="password" value={settings.llm.apiKey} onChange={value => update('llm.apiKey', value)} />
+        </div>
       </section>
 
       <section className="panel settings-panel">
         <div className="panel-head">
-          <h2><HardDrive size={18} />Google Drive</h2>
+          <h2><HardDrive size={18} />画像・PDFストレージ保存（Google Drive設定）</h2>
           <StatusPill kind={driveAuthenticated ? 'success' : 'neutral'}>
             {driveAuthenticated ? 'OAuth認証済み' : '未認証'}
           </StatusPill>
@@ -716,10 +723,12 @@ function SettingsView({ state, onRun }) {
             <p>「Google Driveにログイン」を押して認証するとDriveへ保存されます。認証前の間は、PDFは自動でこのPC内に保存されます。</p>
           </div>
         )}
+        <div className="settings-fields">
         <Field label="OAuth Client ID" value={settings.googleDrive.clientId} onChange={value => update('googleDrive.clientId', value)} />
         <Field label="OAuth Client Secret" type="password" value={settings.googleDrive.clientSecret} onChange={value => update('googleDrive.clientSecret', value)} />
         <Field label="Redirect URI" value={settings.googleDrive.redirectUri} onChange={value => update('googleDrive.redirectUri', value)} />
         <Field label="Driveルートフォルダ名" value={settings.googleDrive.rootFolderName} onChange={value => update('googleDrive.rootFolderName', value)} />
+        </div>
         <div className="security-note">
           <strong>保存情報について</strong>
           <p>APIキー、Client Secret、Google認証トークンはこのPC内の `.manual-library/` に保存します。GitHubには含めません。家のLAN外へ公開したり、共有PCで使ったりする場合は注意してください。</p>
@@ -749,6 +758,26 @@ function SettingsView({ state, onRun }) {
         <div className="action-row">
           <button className="primary" onClick={save}><Settings size={16} />設定を保存</button>
           <button onClick={googleLogin}><HardDrive size={16} />Google Driveにログイン</button>
+        </div>
+      </section>
+
+      <section className="panel settings-panel">
+        <div className="panel-head">
+          <h2><Trash2 size={18} />削除ファイル退避場所</h2>
+          <span>商品を削除してもファイルはすぐ消えず、ここへ移動します</span>
+        </div>
+        <div className="security-note">
+          <strong>削除したPDF・画像の行き先</strong>
+          <p>商品を削除したとき、保存されていたPDFや画像は完全削除されず、いったん「削除予定フォルダ」へ移動します。中身を確認してから、不要なものを手動で削除してください。</p>
+          <p>・<strong>このPCに保存していたPDF・画像</strong>は下記フォルダへ移動します（下のボタンで開けます）。</p>
+          <p>・<strong>Google Driveに保存していたPDF</strong>は、Google Drive内の下記フォルダへ移動します（Google Driveを開いて確認してください）。</p>
+        </div>
+        <Field label="このPCの削除予定フォルダ" value={state?.trash?.localPath || ''} readOnly />
+        <Field label="Google Driveの削除予定フォルダ" value={`${settings.googleDrive.rootFolderName || '取扱説明書ライブラリ'} / ${state?.trash?.driveFolderName || '_削除予定'}`} readOnly />
+        <div className="security-note">
+          <strong>フォルダの開き方</strong>
+          <p>このPCのフォルダ：上の「このPCの削除予定フォルダ」のパスをコピーして、エクスプローラーのアドレスバー（画面上部の入力欄）に貼り付け、Enterを押すと開けます。</p>
+          <p>Google Driveのフォルダ：Google Drive（ブラウザ）を開き、上記のフォルダ名を探してください。</p>
         </div>
       </section>
     </div>
@@ -818,11 +847,11 @@ function GoogleSwitch({ checked, onChange, label, readOnly = false }) {
   );
 }
 
-function Field({ label, value, onChange, type = 'text' }) {
+function Field({ label, value, onChange, type = 'text', readOnly = false }) {
   return (
     <label className="field">
       <span>{label}</span>
-      <input type={type} value={value || ''} onChange={event => onChange(event.target.value)} />
+      <input type={type} value={value || ''} readOnly={readOnly} onChange={event => onChange?.(event.target.value)} />
     </label>
   );
 }

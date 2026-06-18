@@ -9,6 +9,7 @@ export const PORT = Number(process.env.PORT || 5174);
 export const DATA_DIR = process.env.MANUAL_LIBRARY_DATA_DIR || path.join(repoRoot, '.manual-library');
 export const DB_PATH = path.join(DATA_DIR, 'db.json');
 export const ARCHIVE_DIR = path.join(DATA_DIR, 'archive');
+export const TRASH_DIR = path.join(DATA_DIR, 'trash');
 export const SETTINGS_PATH = path.join(DATA_DIR, 'settings.json');
 export const GOOGLE_TOKENS_PATH = path.join(DATA_DIR, 'google-tokens.json');
 export const MAX_PDF_BYTES = 80 * 1024 * 1024;

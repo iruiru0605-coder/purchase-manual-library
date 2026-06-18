@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { nanoid } from 'nanoid';
-import { ARCHIVE_DIR, DATA_DIR, DB_PATH, DEFAULT_SETTINGS, SETTINGS_PATH } from '../config.js';
+import { ARCHIVE_DIR, DATA_DIR, DB_PATH, DEFAULT_SETTINGS, SETTINGS_PATH, TRASH_DIR } from '../config.js';
 
 const emptyDb = {
   imports: [],
@@ -19,6 +19,8 @@ export async function ensureDataDir() {
   await fsp.chmod(DATA_DIR, 0o700).catch(() => {});
   await fsp.mkdir(ARCHIVE_DIR, { recursive: true, mode: 0o700 });
   await fsp.chmod(ARCHIVE_DIR, 0o700).catch(() => {});
+  await fsp.mkdir(TRASH_DIR, { recursive: true, mode: 0o700 });
+  await fsp.chmod(TRASH_DIR, 0o700).catch(() => {});
   if (!fs.existsSync(DB_PATH)) {
     await writeJson(DB_PATH, emptyDb);
   }
@@ -122,6 +124,38 @@ export async function saveLocalProductImage(product, file) {
     sourceUrl: file.sourceUrl,
     uploadedAt: new Date().toISOString()
   };
+}
+
+export async function moveLocalFileToTrash(filePath, { product, label = 'file' } = {}) {
+  await ensureDataDir();
+  if (!filePath) return null;
+  const resolved = path.resolve(filePath);
+  const archiveRoot = path.resolve(ARCHIVE_DIR);
+  if (!resolved.startsWith(`${archiveRoot}${path.sep}`)) return null;
+  if (!fs.existsSync(resolved)) return null;
+
+  const date = new Date().toISOString().slice(0, 10);
+  const productSegment = makeSafeSegment(`${product?.productId || product?.id || 'unknown'}_${product?.name || product?.title || ''}`);
+  const folder = path.join(TRASH_DIR, date, productSegment);
+  await fsp.mkdir(folder, { recursive: true });
+
+  const parsed = path.parse(resolved);
+  let target = path.join(folder, `${makeSafeSegment(label)}_${parsed.base}`);
+  let counter = 1;
+  while (fs.existsSync(target)) {
+    target = path.join(folder, `${makeSafeSegment(label)}_${parsed.name}_${counter}${parsed.ext}`);
+    counter += 1;
+  }
+
+  try {
+    await fsp.rename(resolved, target);
+  } catch (error) {
+    if (error.code !== 'EXDEV') throw error;
+    await fsp.copyFile(resolved, target);
+    await fsp.unlink(resolved);
+  }
+
+  return target;
 }
 
 async function readJson(filePath, fallback) {

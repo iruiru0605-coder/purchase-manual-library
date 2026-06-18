@@ -49,6 +49,18 @@ npm install
 
 ## 5. 起動
 
+### Windowsでアイコン起動にする
+
+アプリのフォルダで、最初に1回だけ実行します。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-windows-shortcut.ps1
+```
+
+デスクトップに `取説ライブラリ` アイコンが作られます。次回からはそのアイコンをダブルクリックすると、必要に応じて `npm install` と `npm run build` を実行し、アプリをブラウザで開きます。
+
+### ターミナルから起動する
+
 ```bash
 npm run dev
 ```
@@ -113,6 +125,8 @@ http://localhost:5174/api/google/oauth/callback
 
 未設定または `ローカル保存` の場合、PDFはローカルの `.manual-library/archive/` に保存されます。`Drive保存` がオンでも未認証の場合は、自動でローカルへ保存されます（Driveには入りません）。
 
+商品やPDF情報を削除した場合、ローカル保存済みのPDF・製品画像は `.manual-library/trash/` へ移動します。アプリの `設定 > 削除予定フォルダ` からフォルダを開き、中身を確認してから手動で削除できます。Google Drive保存済みPDFは、Drive内の `_削除予定` フォルダへ移動します。
+
 ## 9. 更新する
 
 Gitで取得している場合:
@@ -122,6 +136,8 @@ git pull
 npm install
 npm run dev
 ```
+
+Windowsのデスクトップアイコンから使っている場合は、更新後に同じアイコンをダブルクリックすれば起動できます。
 
 ZIPで取得している場合は、新しいZIPをダウンロードして展開し直します。既存の `.manual-library/` がある場合は、必要に応じて新しいフォルダへ移してください。
 
