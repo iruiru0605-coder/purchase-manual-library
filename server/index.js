@@ -11,10 +11,12 @@ import { enrichCandidateWithLlm } from './services/llm.js';
 import { searchManualCandidates } from './services/manualSearch.js';
 import { getDriveStatus, handleGoogleOAuthCallback, makeGoogleAuthUrl, uploadPdfToDrive } from './services/googleDrive.js';
 import { registerCandidate, removeProduct, updateProductFields } from './services/products.js';
+import { buildTemplateCsv } from './services/stores.js';
 import {
   ensureDataDir,
   makeManualId,
   saveLocalPdf,
+  saveLocalProductImage,
   mutateDb,
   readDb,
   readSettings,
@@ -96,6 +98,12 @@ app.post('/api/imports/text', async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+app.get('/api/imports/template', (_req, res) => {
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="purchase-history-template.csv"');
+  res.send(`﻿${buildTemplateCsv()}`);
 });
 
 app.post('/api/candidates/:id/status', async (req, res, next) => {
@@ -232,7 +240,48 @@ app.delete('/api/products/:id', async (req, res, next) => {
   try {
     const product = await mutateDb(db => removeProduct(db, req.params.id));
     await cleanupLocalManualFiles(product);
+    await cleanupLocalProductImage(product);
     res.json({ ok: true, removed: product });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/products/:id/image', upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) throw new Error('画像ファイルを選択してください。');
+    if (!isSupportedImage(req.file)) {
+      throw new Error('PNG、JPEG、WebP画像のみアップロードできます。');
+    }
+    if (req.file.size > 8 * 1024 * 1024) {
+      throw new Error('画像は8MB以下にしてください。');
+    }
+
+    const db = await readDb();
+    const product = db.products.find(item => item.id === req.params.id || item.productId === req.params.id);
+    if (!product) throw new Error('商品が見つかりません。');
+
+    await cleanupLocalProductImage(product);
+    product.image = await saveLocalProductImage(product, req.file);
+    product.updatedAt = new Date().toISOString();
+    await writeDb(db);
+    res.json(product);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete('/api/products/:id/image', async (req, res, next) => {
+  try {
+    const db = await readDb();
+    const product = db.products.find(item => item.id === req.params.id || item.productId === req.params.id);
+    if (!product) throw new Error('商品が見つかりません。');
+    const removed = product.image || null;
+    await cleanupLocalProductImage(product);
+    delete product.image;
+    product.updatedAt = new Date().toISOString();
+    await writeDb(db);
+    res.json({ ok: true, removed });
   } catch (error) {
     next(error);
   }
@@ -263,10 +312,31 @@ app.post('/api/products/:id/manuals/upload', upload.single('file'), async (req, 
       checkedAt: new Date().toISOString()
     };
 
-    const driveStatus = await getDriveStatus();
-    const archive = driveStatus.configured && driveStatus.authenticated
-      ? await uploadPdfToDrive({ product, manual, buffer: req.file.buffer })
-      : await saveLocalPdf(product, manual, req.file.buffer);
+    const [driveStatus, settings] = await Promise.all([
+      getDriveStatus(),
+      readSettings({ revealSecrets: true })
+    ]);
+    const useGoogleDrive = wantsGoogleDrive(settings);
+    const driveAvailable = useGoogleDrive && driveReady(driveStatus);
+
+    // Driveを希望しているが未認証、またはアップロード失敗のときは
+    // データを失わないようローカルへ自動退避する（local-first）。
+    let archive = null;
+    let driveFallback = false;
+    if (driveAvailable) {
+      try {
+        archive = await uploadPdfToDrive({ product, manual, buffer: req.file.buffer });
+      } catch {
+        archive = null;
+      }
+    }
+    if (!archive) {
+      if (useGoogleDrive) driveFallback = true;
+      archive = await saveLocalPdf(product, manual, req.file.buffer);
+    }
+    if (driveFallback) {
+      archive.fallbackReason = 'drive-unavailable';
+    }
 
     product.manuals = product.manuals || [];
     product.manuals.unshift({
@@ -335,6 +405,25 @@ app.get('/api/products/:productId/manuals/:manualId/file', async (req, res, next
   }
 });
 
+app.get('/api/products/:id/image', async (req, res, next) => {
+  try {
+    const db = await readDb();
+    const product = db.products.find(item => item.id === req.params.id || item.productId === req.params.id);
+    if (!product?.image?.path) throw new Error('製品画像が見つかりません。');
+    const resolved = path.resolve(product.image.path);
+    const archiveRoot = path.resolve(ARCHIVE_DIR);
+    if (!resolved.startsWith(`${archiveRoot}${path.sep}`)) throw new Error('画像の保存先が不正です。');
+    const stat = await fs.stat(resolved);
+    if (!stat.isFile()) throw new Error('製品画像が見つかりません。');
+    res.setHeader('Content-Type', product.image.mimeType || 'image/jpeg');
+    res.setHeader('Content-Length', String(stat.size));
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    createReadStream(resolved).pipe(res);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get('/api/google/status', async (_req, res, next) => {
   try {
     res.json(await getDriveStatus());
@@ -361,6 +450,12 @@ app.get('/api/google/oauth/callback', async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+app.use('/api', (req, res) => {
+  res.status(404).json({
+    error: `APIエンドポイントが見つかりません: ${req.method} ${req.originalUrl}`
+  });
 });
 
 if (process.env.NODE_ENV === 'production') {
@@ -393,6 +488,26 @@ async function cleanupLocalManualFiles(product) {
     if (manual.archive?.storage !== 'local' || !manual.archive.path) return;
     await fs.unlink(manual.archive.path).catch(() => {});
   }));
+}
+
+async function cleanupLocalProductImage(product) {
+  if (product?.image?.storage !== 'local' || !product.image.path) return;
+  await fs.unlink(product.image.path).catch(() => {});
+}
+
+function isSupportedImage(file) {
+  const mime = String(file?.mimetype || '').toLowerCase();
+  const name = String(file?.originalname || '').toLowerCase();
+  return ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(mime)
+    || /\.(png|jpe?g|webp)$/.test(name);
+}
+
+function wantsGoogleDrive(settings) {
+  return settings?.app?.archiveMode !== 'local-only';
+}
+
+function driveReady(driveStatus) {
+  return Boolean(driveStatus?.configured && driveStatus?.authenticated);
 }
 
 async function sendLocalPdf(res, filePath) {

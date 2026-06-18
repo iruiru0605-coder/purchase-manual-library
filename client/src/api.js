@@ -52,6 +52,16 @@ export async function apiUploadManual(productId, file, { title, type }) {
   return parseResponse(response);
 }
 
+export async function apiUploadProductImage(productId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await safeFetch(`/api/products/${productId}/image`, {
+    method: 'POST',
+    body: formData
+  });
+  return parseResponse(response);
+}
+
 async function safeFetch(path, options) {
   try {
     return await fetch(path, options);
@@ -61,9 +71,23 @@ async function safeFetch(path, options) {
 }
 
 async function parseResponse(response) {
-  const payload = await response.json().catch(() => ({}));
+  const text = await response.text().catch(() => '');
+  const payload = text ? parseJson(text) : {};
   if (!response.ok) {
-    throw new Error(payload.error || 'APIエラーが発生しました。');
+    const detail = typeof payload.error === 'string'
+      ? payload.error
+      : typeof payload.message === 'string'
+        ? payload.message
+        : text.trim();
+    throw new Error(detail || `APIエラーが発生しました。(${response.status})`);
   }
   return payload;
+}
+
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {};
+  }
 }

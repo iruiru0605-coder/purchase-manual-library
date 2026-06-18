@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import { makeCandidateId, makeImportId } from '../lib/storage.js';
+import { normalizeStore } from './stores.js';
 
 const FIELD_ALIASES = {
   title: ['商品名', '品名', 'タイトル', '商品', 'Product Name', 'Item Name', 'Title', 'name', 'Name'],
@@ -84,7 +85,7 @@ export function makeCandidateFromRow(row, index, context) {
     quantity: pick(row, FIELD_ALIASES.quantity) || '',
     sourceUrl: pick(row, FIELD_ALIASES.sourceUrl),
     orderId: pick(row, FIELD_ALIASES.orderId),
-    seller: pick(row, FIELD_ALIASES.seller),
+    seller: normalizeStore(pick(row, FIELD_ALIASES.seller)),
     memo: pick(row, FIELD_ALIASES.memo),
     warrantyMonths: normalizeInteger(pick(row, FIELD_ALIASES.warrantyMonths)),
     extendedWarrantyMonths: normalizeInteger(pick(row, FIELD_ALIASES.extendedWarrantyMonths)),

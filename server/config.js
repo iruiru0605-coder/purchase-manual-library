@@ -42,7 +42,7 @@ export const DEFAULT_SETTINGS = {
   },
   app: {
     libraryTitle: '取説ライブラリ',
-    archiveMode: 'drive-first'
+    archiveMode: 'local-only'
   },
   categories: DEFAULT_CATEGORIES
 };

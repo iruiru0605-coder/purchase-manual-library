@@ -5,3 +5,5 @@ dist/
 tmp/
 .manual-library/
 *.log
+dev.out
+dev.err

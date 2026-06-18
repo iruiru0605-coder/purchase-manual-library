@@ -107,6 +107,23 @@ export async function saveLocalPdf(product, manual, buffer) {
   };
 }
 
+export async function saveLocalProductImage(product, file) {
+  const folder = path.join(ARCHIVE_DIR, '_images', makeSafeSegment(product.productId || product.id));
+  await fsp.mkdir(folder, { recursive: true });
+  const extension = imageExtensionFor(file);
+  const filename = `product-image${extension}`;
+  const filePath = path.join(folder, filename);
+  await fsp.writeFile(filePath, file.buffer);
+  return {
+    storage: 'local',
+    path: filePath,
+    filename,
+    mimeType: file.mimetype,
+    sourceUrl: file.sourceUrl,
+    uploadedAt: new Date().toISOString()
+  };
+}
+
 async function readJson(filePath, fallback) {
   try {
     const raw = await fsp.readFile(filePath, 'utf8');
@@ -139,4 +156,13 @@ function redactSettings(settings) {
   if (copy.llm?.apiKey) copy.llm.apiKey = '********';
   if (copy.googleDrive?.clientSecret) copy.googleDrive.clientSecret = '********';
   return copy;
+}
+
+function imageExtensionFor(file) {
+  const mime = String(file?.mimetype || '').toLowerCase();
+  if (mime === 'image/png') return '.png';
+  if (mime === 'image/webp') return '.webp';
+  if (mime === 'image/jpeg' || mime === 'image/jpg') return '.jpg';
+  const ext = path.extname(file?.originalname || '').toLowerCase();
+  return ['.png', '.jpg', '.jpeg', '.webp'].includes(ext) ? ext : '.jpg';
 }

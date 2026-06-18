@@ -39,10 +39,15 @@ export async function registerCandidate(db, candidateId, { selectedManualIds = [
   });
 
   const driveStatus = await getDriveStatus();
+  const useGoogleDrive = wantsGoogleDrive(settings);
+  if (selected.length > 0 && useGoogleDrive && !driveReady(driveStatus)) {
+    throw new Error('保存先がGoogle Driveになっていますが、Google Driveに未ログインです。設定でログインするか、保存先をローカルに切り替えてください。');
+  }
+
   for (const manual of selected) {
     try {
       const buffer = await downloadPdf(manual.url);
-      const storage = driveStatus.configured && driveStatus.authenticated
+      const storage = useGoogleDrive
         ? await uploadPdfToDrive({ product, manual, buffer })
         : await saveLocalPdf(product, manual, buffer);
       product.manuals.push({
@@ -148,4 +153,12 @@ function parseDate(value) {
   if (!match) return null;
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function wantsGoogleDrive(settings) {
+  return settings?.app?.archiveMode !== 'local-only';
+}
+
+function driveReady(driveStatus) {
+  return Boolean(driveStatus?.configured && driveStatus?.authenticated);
 }

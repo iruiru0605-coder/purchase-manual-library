@@ -104,11 +104,14 @@ http://localhost:5174/api/google/oauth/callback
 
 1. `OAuth Client ID` を貼る
 2. `OAuth Client Secret` を貼る
-3. `設定を保存` を押す
-4. `Google Driveにログイン` を押す
-5. Googleの許可画面でアクセスを許可する
+3. `PDFの保存先` を `Drive保存` にする
+4. `設定を保存` を押す
+5. `Google Driveにログイン` を押す
+6. Googleの許可画面でアクセスを許可する
 
-未設定の場合、PDFはローカルの `.manual-library/archive/` に保存されます。
+`アクセスをブロック: 取説ライブラリ は Google の審査プロセスを完了していません` または `403: access_denied` が表示される場合は、Google Cloud Consoleの `Google Auth platform > Audience` を開き、`Test users` にログイン中のGoogleアカウントを追加してください。個人利用なら、アプリを一般公開せずテストユーザー登録のままで使えます。
+
+未設定または `ローカル保存` の場合、PDFはローカルの `.manual-library/archive/` に保存されます。`Drive保存` がオンでも未認証の場合は、自動でローカルへ保存されます（Driveには入りません）。
 
 ## 9. 更新する
 

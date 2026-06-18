@@ -11,21 +11,21 @@ import {
   HardDrive,
   Library,
   Loader2,
-  RefreshCw,
   Search,
   Settings,
   ShieldCheck,
   Save,
+  SlidersHorizontal,
   Smartphone,
   Trash2,
   Upload,
   X
 } from 'lucide-react';
-import { apiDelete, apiGet, apiImportText, apiPatch, apiPost, apiUploadCsv, apiUploadManual } from './api.js';
+import { apiDelete, apiGet, apiImportText, apiPatch, apiPost, apiUploadCsv, apiUploadManual, apiUploadProductImage } from './api.js';
 
 const TABS = [
-  { id: 'inbox', label: '購入履歴Inbox', icon: Upload },
   { id: 'library', label: 'ライブラリ', icon: Library },
+  { id: 'inbox', label: '購入履歴Inbox', icon: Upload },
   { id: 'settings', label: '設定', icon: Settings }
 ];
 
@@ -40,7 +40,7 @@ const STATUS_LABELS = {
 
 export default function App() {
   const [state, setState] = useState(null);
-  const [activeTab, setActiveTab] = useState('inbox');
+  const [activeTab, setActiveTab] = useState('library');
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState('');
@@ -53,6 +53,10 @@ export default function App() {
 
   const candidates = state?.candidates || [];
   const selectedCandidate = candidates.find(item => item.id === selectedId) || candidates[0] || null;
+  const productCount = state?.products?.length || 0;
+  const driveConnected = Boolean(state?.drive?.authenticated);
+  const driveStorageEnabled = wantsGoogleDrive(state?.settings);
+  const acceptedCount = candidates.filter(item => item.status === 'accepted').length;
 
   useEffect(() => {
     if (!selectedId && candidates[0]) setSelectedId(candidates[0].id);
@@ -93,7 +97,6 @@ export default function App() {
           <div className="brand-mark"><FileSearch size={22} /></div>
           <div>
             <strong>取説ライブラリ</strong>
-            <span>購入履歴から自動登録</span>
           </div>
         </div>
         <nav>
@@ -113,51 +116,69 @@ export default function App() {
         </nav>
         <div className="sidebar-status">
           <div><Database size={16} /> 候補 {candidates.length}件</div>
-          <div><Archive size={16} /> 登録済み {state?.products?.length || 0}件</div>
-          <div><HardDrive size={16} /> Drive {state?.drive?.authenticated ? '接続済み' : '未接続'}</div>
+          <div><Archive size={16} /> 登録済み {productCount}件</div>
+          <div><HardDrive size={16} /> Drive {driveConnected ? '接続済み' : '未接続'}</div>
         </div>
       </aside>
 
       <main className="workspace">
-        <header className="topbar">
-          <div>
-            <h1>{TABS.find(tab => tab.id === activeTab)?.label}</h1>
-            <p>{subtitleFor(activeTab)}</p>
-          </div>
-          <button className="icon-button" onClick={refresh} title="再読み込み">
-            <RefreshCw size={18} />
-          </button>
-        </header>
+        <div className="content-frame">
+          <header className="topbar">
+            <div>
+              <span className="page-eyebrow">Manual Library</span>
+              <h1>{TABS.find(tab => tab.id === activeTab)?.label}</h1>
+            </div>
+            <div className="archive-visual" aria-hidden="true" />
+          </header>
 
-        {error && <div className="notice error"><X size={16} />{error}</div>}
-        {message && <div className="notice success"><Check size={16} />{message}</div>}
-        {busy && <div className="notice working"><Loader2 className="spin" size={16} />{busy}</div>}
+          <section className="overview-strip" aria-label="利用状況">
+            <MetricCard icon={Database} label="登録候補" value={`${candidates.length}件`} tone="blue" />
+            <MetricCard icon={ShieldCheck} label="登録予定" value={`${acceptedCount}件`} tone="green" />
+            <MetricCard icon={Archive} label="登録済み" value={`${productCount}件`} tone="orange" />
+            <div className="metric-card drive-metric">
+              <HardDrive size={18} />
+              <div>
+                <span>保存先</span>
+                <strong>{driveStorageEnabled ? 'Drive' : 'ローカル'}</strong>
+              </div>
+              <StatusPill kind={driveConnected ? 'success' : 'neutral'}>
+                {driveConnected ? '認証済み' : '未認証'}
+              </StatusPill>
+            </div>
+          </section>
 
-        {activeTab === 'inbox' && (
-          <Inbox
-            candidates={candidates}
-            selectedCandidate={selectedCandidate}
-            setSelectedId={setSelectedId}
-            onRun={run}
-            busy={busy}
-          />
-        )}
-        {activeTab === 'library' && (
-          <LibraryView
-            products={state?.products || []}
-            categories={state?.settings?.categories || []}
-            query={query}
-            setQuery={setQuery}
-            onRun={run}
-          />
-        )}
-        {activeTab === 'settings' && (
-          <SettingsView state={state} onRun={run} />
-        )}
+          {error && <div className="notice error"><X size={16} />{error}</div>}
+          {message && <div className="notice success"><Check size={16} />{message}</div>}
+          {busy && <div className="notice working"><Loader2 className="spin" size={16} />{busy}</div>}
+
+          {activeTab === 'inbox' && (
+            <Inbox
+              candidates={candidates}
+              selectedCandidate={selectedCandidate}
+              setSelectedId={setSelectedId}
+              onRun={run}
+              busy={busy}
+            />
+          )}
+          {activeTab === 'library' && (
+            <LibraryView
+              products={state?.products || []}
+              categories={state?.settings?.categories || []}
+              query={query}
+              setQuery={setQuery}
+              onRun={run}
+            />
+          )}
+          {activeTab === 'settings' && (
+            <SettingsView state={state} onRun={run} />
+          )}
+        </div>
       </main>
     </div>
   );
 }
+
+const CANONICAL_STORES = ['Amazon', '楽天', 'Yahoo!', 'メルカリ', 'ヨドバシ', 'その他'];
 
 function Inbox({ candidates, selectedCandidate, setSelectedId, onRun, busy }) {
   const [source, setSource] = useState('Amazon');
@@ -182,15 +203,12 @@ function Inbox({ candidates, selectedCandidate, setSelectedId, onRun, busy }) {
       <section className="panel import-panel">
         <div className="panel-head">
           <h2><Upload size={18} />取り込み</h2>
-          <span>CSVがなくても、購入履歴ページのコピー貼り付けで候補化できます。</span>
+          <span>
+            <a className="link-button" href="/api/imports/template" download="purchase-history-template.csv">テンプレートをダウンロード</a>
+            （販売元は Amazon/楽天/Yahoo!/メルカリ/ヨドバシ/その他 で入力。自動で表記を揃えます）
+          </span>
         </div>
         <div className="import-controls">
-          <select value={source} onChange={event => setSource(event.target.value)}>
-            <option>Amazon</option>
-            <option>楽天</option>
-            <option>メルカリ</option>
-            <option>手入力CSV</option>
-          </select>
           <label className="file-picker">
             <input type="file" accept=".csv,text/csv" onChange={event => setFile(event.target.files?.[0] || null)} />
             {file ? file.name : 'CSVを選択'}
@@ -202,8 +220,13 @@ function Inbox({ candidates, selectedCandidate, setSelectedId, onRun, busy }) {
         <div className="paste-import">
           <div>
             <strong>購入履歴ページを貼り付け</strong>
-            <span>Amazonや楽天の購入履歴画面で、注文カード周辺を選択してコピーし、ここへ貼り付けます。</span>
+            <span>購入履歴画面で注文カード周辺をコピーして貼り付け。下の販売元で取り込みます。</span>
           </div>
+          <select value={source} onChange={event => setSource(event.target.value)} aria-label="貼り付けテキストの販売元">
+            {CANONICAL_STORES.map(store => (
+              <option key={store} value={store}>{store}</option>
+            ))}
+          </select>
           <textarea
             value={pastedText}
             onChange={event => setPastedText(event.target.value)}
@@ -242,7 +265,7 @@ function Inbox({ candidates, selectedCandidate, setSelectedId, onRun, busy }) {
                       </button>
                       <small>{candidate.purchaseDate || '購入日不明'} {candidate.price ? ` / ${candidate.price.toLocaleString()}円` : ''}</small>
                     </td>
-                    <td>{candidate.source}</td>
+                    <td>{candidate.seller || candidate.source}</td>
                     <td>{candidate.registrationScore}</td>
                     <td><ChevronRight size={16} /></td>
                   </tr>
@@ -367,11 +390,11 @@ function CandidateDetail({ candidate, onRun, busy }) {
         </div>
         <div className="manual-list">
           {(candidate.manualCandidates || []).map(manual => (
-            <label key={manual.id} className="manual-row">
-              <input
-                type="checkbox"
+            <div key={manual.id} className={selectedManualIds.includes(manual.id) ? 'manual-row selected' : 'manual-row'}>
+              <GoogleSwitch
                 checked={selectedManualIds.includes(manual.id)}
                 onChange={() => toggleManual(manual.id)}
+                label={`${manual.title}を保存対象にする`}
               />
               <span>
                 <strong>{manual.type}</strong>
@@ -381,7 +404,7 @@ function CandidateDetail({ candidate, onRun, busy }) {
               <a href={manual.url} target="_blank" rel="noreferrer" onClick={event => event.stopPropagation()} title="PDFを開く">
                 <ExternalLink size={16} />
               </a>
-            </label>
+            </div>
           ))}
           {(candidate.manualCandidates || []).length === 0 && (
             <p className="muted">候補探索を実行すると、公式サイト優先でPDFを探します。</p>
@@ -398,21 +421,27 @@ function CandidateDetail({ candidate, onRun, busy }) {
 
 function LibraryView({ products, categories, query, setQuery, onRun }) {
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [warrantyOnly, setWarrantyOnly] = useState(false);
   const filtered = products.filter(product => {
     const text = `${product.maker} ${product.name} ${product.model} ${product.category} ${product.paperStorage}`.toLowerCase();
     const categoryOk = !categoryFilter || product.category === categoryFilter;
-    return categoryOk && text.includes(query.toLowerCase());
+    const warrantyOk = !warrantyOnly || isWarrantyExpired(product.warrantyExpiresAt);
+    return categoryOk && warrantyOk && text.includes(query.toLowerCase());
   });
 
   return (
     <div className="library-layout">
       <div className="searchbar">
-        <Search size={18} />
+        <SlidersHorizontal size={18} />
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder="商品名、型番、カテゴリ、紙の保管先で検索" />
         <select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)} aria-label="カテゴリで絞り込み">
           <option value="">すべてのカテゴリ</option>
           {categories.map(category => <option key={category.name} value={category.name}>{category.name}</option>)}
         </select>
+        <label className="switch-filter">
+          <GoogleSwitch checked={warrantyOnly} onChange={() => setWarrantyOnly(current => !current)} label="保証期限切れのみ表示" />
+          <span>保証期限切れのみ</span>
+        </label>
       </div>
       <div className="product-list">
         {filtered.map(product => (
@@ -420,7 +449,7 @@ function LibraryView({ products, categories, query, setQuery, onRun }) {
         ))}
         {filtered.length === 0 && (
           <div className="panel empty-library">
-            <Smartphone size={36} />
+            <div className="empty-visual" aria-hidden="true" />
             <p>登録済みの商品はまだありません。</p>
           </div>
         )}
@@ -431,6 +460,7 @@ function LibraryView({ products, categories, query, setQuery, onRun }) {
 
 function ProductCard({ product, categories, onRun }) {
   const [draft, setDraft] = useState(product);
+  const [imageFile, setImageFile] = useState(null);
   const [manualFile, setManualFile] = useState(null);
   const [manualTitle, setManualTitle] = useState('');
   const [manualType, setManualType] = useState('取扱説明書');
@@ -457,6 +487,23 @@ function ProductCard({ product, categories, onRun }) {
     });
   }
 
+  function uploadImage() {
+    return onRun('製品画像を保存しています...', async () => {
+      if (!imageFile) throw new Error('画像ファイルを選択してください。');
+      validateProductImage(imageFile);
+      await apiUploadProductImage(product.id, imageFile);
+      setImageFile(null);
+      return { message: '製品画像を保存しました。' };
+    });
+  }
+
+  function deleteImage() {
+    return onRun('製品画像を削除しています...', async () => {
+      await apiDelete(`/api/products/${product.id}/image`);
+      return { message: '製品画像を削除しました。' };
+    });
+  }
+
   function uploadManual() {
     return onRun('PDFをアップロードしています...', async () => {
       if (!manualFile) throw new Error('PDFファイルを選択してください。');
@@ -476,8 +523,37 @@ function ProductCard({ product, categories, onRun }) {
 
   return (
     <article className="product-card editable-product">
+      <div className="product-image-panel">
+        <div className={product.image ? 'product-image-frame has-image' : 'product-image-frame'}>
+          {product.image ? (
+            <img src={productImageHref(product)} alt={`${product.name || '商品'}の製品画像`} />
+          ) : (
+            <div className="product-image-placeholder">
+              <span className="placeholder-mark" aria-hidden="true" />
+              <span>製品画像</span>
+            </div>
+          )}
+        </div>
+        <div className="image-actions">
+          <label className="file-picker image-file-picker">
+            <input type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" onChange={event => setImageFile(event.target.files?.[0] || null)} />
+            {imageFile ? imageFile.name : product.image ? '画像を変更' : '画像を選択'}
+          </label>
+          <button onClick={uploadImage} disabled={!imageFile}><Upload size={16} />保存</button>
+          {product.image && <button onClick={deleteImage}><Trash2 size={16} />削除</button>}
+        </div>
+      </div>
       <div className="product-main">
-        <span className="product-id">{product.productId}</span>
+        <div className="product-card-head">
+          <span className="product-id">{product.productId}</span>
+          <StatusPill kind={isWarrantyExpired(product.warrantyExpiresAt) ? 'danger' : 'success'}>
+            {isWarrantyExpired(product.warrantyExpiresAt) ? '期限切れ' : '保証確認'}
+          </StatusPill>
+        </div>
+        <div className="product-summary">
+          <h2>{draft.name || '商品名未設定'}</h2>
+          <p>{draft.maker || 'メーカー未設定'} {draft.model ? `/ ${draft.model}` : ''}</p>
+        </div>
         <div className="product-edit-grid">
           <Field label="メーカー" value={draft.maker} onChange={value => setField('maker', value)} />
           <Field label="商品名" value={draft.name} onChange={value => setField('name', value)} />
@@ -548,6 +624,9 @@ function SettingsView({ state, onRun }) {
 
   if (!settings) return null;
 
+  const driveStorageEnabled = wantsGoogleDrive(settings);
+  const driveAuthenticated = Boolean(state?.drive?.authenticated);
+
   function update(path, value) {
     setSettings(current => {
       const next = structuredClone(current);
@@ -613,8 +692,30 @@ function SettingsView({ state, onRun }) {
       <section className="panel settings-panel">
         <div className="panel-head">
           <h2><HardDrive size={18} />Google Drive</h2>
-          <span>{state?.drive?.authenticated ? 'OAuth認証済み' : '未認証。未認証時はローカル保存します。'}</span>
+          <StatusPill kind={driveAuthenticated ? 'success' : 'neutral'}>
+            {driveAuthenticated ? 'OAuth認証済み' : '未認証'}
+          </StatusPill>
         </div>
+        <div className="storage-mode-row">
+          <div>
+            <strong>PDFの保存先</strong>
+            <span>{driveStorageEnabled ? 'Google Driveへ保存します。未認証の間は自動でこのPC内に保存します。' : 'このPC内のローカルフォルダへ保存します。'}</span>
+          </div>
+          <label className="storage-switch-label">
+            <GoogleSwitch
+              checked={driveStorageEnabled}
+              onChange={() => update('app.archiveMode', driveStorageEnabled ? 'local-only' : 'drive-first')}
+              label="Google Driveへ保存する"
+            />
+            <span>{driveStorageEnabled ? 'Drive保存' : 'ローカル保存'}</span>
+          </label>
+        </div>
+        {driveStorageEnabled && !driveAuthenticated && (
+          <div className="oauth-warning storage-warning">
+            <strong>Google Driveに未ログインです</strong>
+            <p>「Google Driveにログイン」を押して認証するとDriveへ保存されます。認証前の間は、PDFは自動でこのPC内に保存されます。</p>
+          </div>
+        )}
         <Field label="OAuth Client ID" value={settings.googleDrive.clientId} onChange={value => update('googleDrive.clientId', value)} />
         <Field label="OAuth Client Secret" type="password" value={settings.googleDrive.clientSecret} onChange={value => update('googleDrive.clientSecret', value)} />
         <Field label="Redirect URI" value={settings.googleDrive.redirectUri} onChange={value => update('googleDrive.redirectUri', value)} />
@@ -623,8 +724,12 @@ function SettingsView({ state, onRun }) {
           <strong>保存情報について</strong>
           <p>APIキー、Client Secret、Google認証トークンはこのPC内の `.manual-library/` に保存します。GitHubには含めません。家のLAN外へ公開したり、共有PCで使ったりする場合は注意してください。</p>
         </div>
-        <details className="oauth-guide" open>
+        <details className="oauth-guide">
           <summary>OAuthクライアントIDとシークレットの取得方法</summary>
+          <div className="oauth-warning">
+            <strong>403: access_denied が出る場合</strong>
+            <p>Google Cloud Consoleの「Google Auth platform」→「Audience」で、テストユーザーにログイン中のGoogleアカウントを追加してください。このアプリを個人利用する場合は、審査公開せずテストユーザー登録のままで使えます。</p>
+          </div>
           <ol>
             <li><a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer">Google Cloud Console</a>を開き、Google Driveを使うGoogleアカウントでログインします。</li>
             <li>上部のプロジェクト選択から新しいプロジェクトを作成します。名前は「取説ライブラリ」などで構いません。</li>
@@ -656,6 +761,63 @@ function manualHref(product, manual) {
   return manual.url || `/api/products/${product.id}/manuals/${manual.id}/file`;
 }
 
+function productImageHref(product) {
+  const version = encodeURIComponent(product.image?.uploadedAt || product.updatedAt || '');
+  return `/api/products/${product.id}/image?v=${version}`;
+}
+
+function validateProductImage(file) {
+  const supportedMime = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(String(file.type || '').toLowerCase());
+  const supportedName = /\.(png|jpe?g|webp)$/i.test(file.name || '');
+  if (!supportedMime && !supportedName) {
+    throw new Error('製品画像はPNG、JPEG、WebPのいずれかを選択してください。');
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    throw new Error('製品画像は8MB以下にしてください。');
+  }
+}
+
+function MetricCard({ icon: Icon, label, value, tone }) {
+  return (
+    <div className={`metric-card metric-${tone}`}>
+      <Icon size={18} />
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+    </div>
+  );
+}
+
+function StatusPill({ kind, children }) {
+  return <span className={`status-pill status-pill-${kind}`}>{children}</span>;
+}
+
+function wantsGoogleDrive(settings) {
+  return settings?.app?.archiveMode !== 'local-only';
+}
+
+function GoogleSwitch({ checked, onChange, label, readOnly = false }) {
+  return (
+    <button
+      type="button"
+      className={checked ? 'google-switch checked' : 'google-switch'}
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={readOnly ? undefined : onChange}
+      disabled={readOnly}
+      title={label}
+    >
+      <span className="switch-track">
+        <span className="switch-thumb">
+          {checked ? <Check size={12} /> : null}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 function Field({ label, value, onChange, type = 'text' }) {
   return (
     <label className="field">
@@ -669,8 +831,8 @@ function StatusBadge({ status }) {
   return <span className={`status status-${status}`}>{STATUS_LABELS[status] || status}</span>;
 }
 
-function subtitleFor(tab) {
-  if (tab === 'inbox') return 'CSVから登録候補を作り、必要な商品だけライブラリへ送ります。';
-  if (tab === 'library') return 'スマホでも探しやすい、登録済み取扱説明書の一覧です。';
-  return 'LLMとGoogle Driveの接続を設定します。';
+function isWarrantyExpired(value) {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) && time < Date.now();
 }
